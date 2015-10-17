@@ -1,0 +1,109 @@
+(* excercise 3 *)
+
+let proc leaf (i) =
+  let t := {l := i, lt := unit, rt := unit, visit := 0} in
+  t
+in
+
+let proc makeLtree (i, t) =
+  let l := leaf (i) in
+  l.lt := t;
+  l
+in
+
+let proc makeRtree (i, t) =
+  let l := leaf (i) in
+  l.rt := t;
+  l
+in
+
+let proc makeTree (i, t1, t2) =
+  let l := leaf (i) in
+  l.lt := t1;
+  l.rt := t2;
+  l
+in
+
+let proc isEmpty (t) =
+  t = unit
+in
+
+let proc rTree (t) = t.rt in
+
+let proc lTree (t) = t.lt in
+
+let proc nodeVal (t) = t.l in
+
+let proc dft (t) =
+  if (not (t.lt = unit))
+    then
+      (write t.l; dft (t.lt);
+      if (not (t.rt = unit))
+        then (dft (t.rt))
+      else
+        t)
+  else
+    (if (not (t.rt = unit))
+      then (write t.l; dft (t.rt))
+    else
+      (write t.l; t))
+in
+
+let queue := {key := unit, nextq := unit} in
+
+let proc enq (t, q) =
+  if (not (isEmpty (t)))
+    then
+    (if (q.nextq = unit)
+     then
+      (let newqueue := {key := t, nextq := unit} in
+       q.nextq := newqueue;
+       q)
+     else
+       enq (t, q.nextq))
+  else
+    unit
+in
+
+let proc deq (q) =
+  q.nextq := q.nextq.nextq;
+  q
+in
+
+let proc bft (t) =
+  t.visit := 1;
+  write (nodeVal (t));
+  enq(t, queue);
+  while (not (queue.nextq = unit))
+    do (let nowt := queue.nextq.key in
+      deq (queue);
+      if (nowt.lt = unit) then unit
+        else
+        (if (nowt.lt.visit = 0)
+          then
+           (nowt.lt.visit := 1;
+            write (nodeVal (nowt.lt));
+            enq (nowt.lt, queue);
+            if (nowt.rt = unit) then unit
+            else
+            (if (nowt.rt.visit = 0)
+              then
+               (nowt.rt.visit := 1;
+                write (nodeVal (nowt.rt));
+                enq (nowt.rt, queue))
+              else
+                unit))
+          else
+            unit);
+        if (nowt.rt = unit) then unit
+          else
+             (if (nowt.rt.visit = 0)
+              then
+              (nowt.rt.visit := 1;
+               write (nodeVal (nowt.rt));
+               enq (nowt.rt, queue))
+              else
+                unit))
+in
+
+2015
