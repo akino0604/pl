@@ -78,33 +78,32 @@ let proc bft (t) =
     do (let nowt := queue.nextq.key in
       deq (queue);
       if (nowt.lt = unit) then unit
-      else
+        else
         (if (nowt.lt.visit = 0)
           then
-            (nowt.lt.visit := 1;
-             write (nodeVal (nowt.lt));
-             enq (nowt.lt, queue);
-             if (nowt.rt = unit) then unit
-             else
-             (if (nowt.rt.visit = 0)
-               then
-                (nowt.rt.visit := 1;
-                 write (nodeVal (nowt.rt));
-                 enq (nowt.rt, queue))
+           (nowt.lt.visit := 1;
+            write (nodeVal (nowt.lt));
+            enq (nowt.lt, queue);
+            if (nowt.rt = unit) then unit
+            else
+            (if (nowt.rt.visit = 0)
+              then
+               (nowt.rt.visit := 1;
+                write (nodeVal (nowt.rt));
+                enq (nowt.rt, queue))
               else
                 unit))
           else
-           (if (nowt.rt = unit) then unit
-             else
-               (if (nowt.rt.visit = 0)
-                then
-                (nowt.rt.visit := 1;
-                 write (nodeVal (nowt.rt));
-                 enq (nowt.rt, queue))
-                else
-                  unit))))
+            unit);
+        if (nowt.rt = unit) then unit
+          else
+             (if (nowt.rt.visit = 0)
+              then
+              (nowt.rt.visit := 1;
+               write (nodeVal (nowt.rt));
+               enq (nowt.rt, queue))
+              else
+                unit))
 in
 
-let t1 := makeTree (1, leaf (2), leaf (3)) in
-let t0 := makeTree (0, t1, leaf (4)) in
-bft (t0)
+2015
