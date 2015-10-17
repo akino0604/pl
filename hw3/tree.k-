@@ -1,0 +1,78 @@
+(* excercise 3 *)
+
+let proc leaf (i) =
+  let t := {l := i, lt := unit, rt := unit, visit := 0} in
+  unit
+in
+
+let proc makeLtree (i, t) =
+  let l := leaf (i) in
+  l.lt := t
+in
+
+let proc makeRtree (i, t) =
+  let l := leaf (i) in
+  l.rt := t
+in
+
+let proc makeTree (i, t1, t2) =
+  let l := leaf (i) in
+  l.lt := t1;
+  l.rt := t2
+in
+
+let proc isEmpty (t) =
+  t.l = unit
+in
+
+let proc rTree (t) = t.rt in
+
+let proc lTree (t) = t.lt in
+
+let proc nodeVal (t) = t.l in
+
+let proc dft (t) =
+  if (not (t.lt = unit))
+    then (write t.l; dft (t.lt))
+  else
+    (if (not (t.rt = unit))
+      then (write t.l; dft (t.rt))
+    else
+      (write t.l))
+in
+
+let queue := {key := unit, nextq := unit} in
+
+let proc enq (t, q) =
+  if (not (isEmpty (t)))
+    then
+    (let newqueue := {key := t, nextq := unit} in
+     q.nextq := newqueue)
+  else
+    unit
+in
+
+let proc deq (q) =
+  q.nextq := unit;
+  q.key
+in
+
+let proc bft (t) =
+  t.visit := 1;
+  enq(t, queue);
+  while (not (queue.nextq = unit))
+    do (write (nodeVal (queue.key)); deq (queue);
+      if (queue.key.lt.visit = 0)
+        then 
+          (queue.key.lt.visit := 1;
+           enq (queue.key.lt, queue))
+      else
+        (if (queue.key.rt.visit = 0)
+          then
+          (queue.key.rt.visit := 1;
+           enq (queue.key.rt, queue))
+         else
+           unit))
+in
+
+2015
