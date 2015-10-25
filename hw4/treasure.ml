@@ -49,8 +49,8 @@ and unifypair: (ty * ty) -> (ty * ty) -> (ty -> ty) = fun (t1, t2) (t1', t2') ->
   compfun s' s
 
 let value = ref 0
-let treasurelist = []
-let typeenv = []
+let treasurelist = ref []
+let typeenv = ref []
 
 let maptl: (ty-> ty) -> (string * ty) list -> (string * ty) list = fun f env ->
   let strl = fst (List.split env) in
@@ -61,16 +61,19 @@ let maptl: (ty-> ty) -> (string * ty) list -> (string * ty) list = fun f env ->
 let rec sol: (string * ty) list * map * ty -> (ty -> ty) = fun (env, m, t) ->
   match m with
   | End treasure ->
-    let treasurelist = treasure::treasurelist in
+    treasurelist := treasure::!treasurelist;
    (match treasure with
     | StarBox -> unify BAR t
     | NameBox str -> 
       if (List.mem_assoc str env) then unify t (List.assoc str env)
-      else raise IMPOSSIBLE)
+      else
+        (typeenv := (str, t)::!typeenv;
+        unify t (VAL str)))
   | Branch (m1, m2) ->
     let newty = VAL (string_of_int !value) in
     value := !value + 1;
     let s = sol (env, m1, PAIR (newty, t)) in
+    typeenv := maptl s env;
     let s' = sol (maptl s env, m2, s newty) in
     compfun s' s
   | Guide (str, m') ->
@@ -78,9 +81,9 @@ let rec sol: (string * ty) list * map * ty -> (ty -> ty) = fun (env, m, t) ->
     let newty2 = VAL (string_of_int (!value + 1)) in
     value := !value + 1;
     let s = unify (PAIR(newty1, newty2)) t in
+    typeenv := maptl s env @ [(str, s newty1)];
     let s' = sol (maptl s env @ [(str, s newty1)], m', s newty2) in
     compfun s' s
-  | _ -> raise IMPOSSIBLE
 
 let rec tytokey: ty -> key = fun t ->
   match t with
@@ -94,7 +97,9 @@ let rec extract: (string * ty) list -> treasure list -> key list = fun env trl -
   | hd::tl ->
    (match hd with
     | StarBox -> Bar::(extract env tl)
-    | NameBox str -> (tytokey (List.assoc str env))::(extract env tl))
+    | NameBox str ->
+      if List.mem_assoc str env then (tytokey (List.assoc str env))::(extract env tl)
+      else raise IMPOSSIBLE)
 
 let remove_elt: key -> key list -> key list = fun k kl ->
   let rec go l acc =
@@ -112,7 +117,9 @@ let remove_duplicate: key list -> key list = fun kl ->
   go kl []
 
 let getReady: map -> key list = fun m ->
+  treasurelist := [];
+  typeenv := [];
   let initty = VAL (string_of_int !value) in
   value := !value + 1;
-  let i = sol (typeenv, m, initty) in
-  remove_duplicate (extract typeenv treasurelist)
+  let _ = sol ([], m, initty) in
+  remove_duplicate (extract !typeenv !treasurelist)
