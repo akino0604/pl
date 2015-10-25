@@ -96,8 +96,23 @@ let rec extract: (string * ty) list -> treasure list -> key list = fun env trl -
     | StarBox -> Bar::(extract env tl)
     | NameBox str -> (tytokey (List.assoc str env))::(extract env tl))
 
+let remove_elt: key -> key list -> key list = fun k kl ->
+  let rec go l acc =
+    match l with
+    | [] -> List.rev acc
+    | x::xs when k = x -> go xs acc
+    | x::xs -> go xs (x::acc) in
+  go kl []
+
+let remove_duplicate: key list -> key list = fun kl ->
+  let rec go l acc =
+    match l with
+    | [] -> List.rev acc
+    | x::xs -> go (remove_elt x xs) (x::acc) in
+  go kl []
+
 let getReady: map -> key list = fun m ->
   let initty = VAL (string_of_int !value) in
   value := !value + 1;
   let i = sol (typeenv, m, initty) in
-  List.sort_uniq (extract typeenv treasurelist)
+  remove_duplicate (extract typeenv treasurelist)
