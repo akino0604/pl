@@ -14,51 +14,47 @@ type ty = BAR
         | VAL of string
         | PAIR of ty * ty
 
-let subst: string -> ty -> (ty -> ty) = fun x t ->
-  let rec s: ty -> ty = fun t' ->
-    match t' with
-    | BAR -> t'
-    | VAL y -> if x = y then t else t'
-    | PAIR (t1, t2) -> PAIR (s t1, s t2) in
-  s
+type substitution = (string * ty) list
 
-let id = (fun x -> x)
+let rec occurs: string -> ty -> bool = fun str t ->
+  match t with
+  | BAR -> false
+  | VAL x -> str = x
+  | PAIR (t1, t2) -> occurs str t1 || occurs str t2
 
-let compfun g f = (fun t -> g (f t))
+let rec subst: string -> ty -> ty -> ty = fun x t t' ->
+  match t' with
+  | BAR -> t'
+  | VAL y -> if x = y then t else t'
+  | PAIR (t1, t2) -> PAIR (subst x t t1, subst x t t2)
 
-let rec occurs: ty -> ty -> bool = fun x tau ->
-  match tau with
-  | PAIR (t1, t2) -> occurs x t1 || occurs x t2
-  | _ -> x = tau
+let apply: substitution -> ty -> ty = fun s t ->
+  List.fold_right (fun (x, u) -> subst x u) s t
 
-let rec unify: ty -> ty -> (ty -> ty) = fun t1 t2 ->
-  match (t1, t2) with
-  | (BAR, BAR) -> id
-  | (VAL x, tau) ->
-    if VAL x = tau then id
-    else if not (occurs (VAL x) tau) then subst x tau
-    else raise IMPOSSIBLE
-  | (tau, VAL x) -> unify (VAL x) tau
-  | (PAIR (a, b), PAIR (c, d)) -> unifypair (a, b) (c, d)
-  | (tau, tau') ->
-    if tau = tau' then id
-    else raise IMPOSSIBLE 
-and unifypair: (ty * ty) -> (ty * ty) -> (ty -> ty) = fun (t1, t2) (t1', t2') ->
-  let s = unify t1 t1' in
-  let s' = unify (s t2) (s t2') in
-  compfun s' s
+let rec unify: ty -> ty -> substitution = fun t t' ->
+  match (t, t') with
+  | (BAR, BAR) -> []
+  | (BAR, VAL y) -> [(y, t')]
+  | (VAL x, BAR) -> [(x, t)]
+  | (VAL x, VAL y) -> if x = y then [] else [(x, t')]
+  | (PAIR (t1, t2), VAL y) -> if occurs y t then raise IMPOSSIBLE else [(y, t)]
+  | (VAL x, PAIR (t1, t2)) -> if occurs x t' then raise IMPOSSIBLE else [(x, t')]
+  | (PAIR (t1, t2), PAIR (t1', t2')) -> 
+    let s = unify t1 t1' in
+    unify (apply s t2) (apply s t2')
+  | (_, _) -> raise IMPOSSIBLE
 
 let value = ref 0
 let treasurelist = ref []
 let typeenv = ref []
 
-let maptl: (ty-> ty) -> (string * ty) list -> (string * ty) list = fun f env ->
+let maptl: substitution -> (string * ty) list -> (string * ty) list = fun sl env ->
   let strl = fst (List.split env) in
   let tyl = snd (List.split env) in
-  let ftyl = List.map f tyl in
+  let ftyl = List.map (apply sl) tyl in
   List.combine strl ftyl
 
-let rec sol: (string * ty) list * map * ty -> (ty -> ty) = fun (env, m, t) ->
+let rec sol: (string * ty) list * map * ty -> substitution = fun (env, m, t) ->
   match m with
   | End treasure ->
     treasurelist := treasure::!treasurelist;
@@ -74,16 +70,16 @@ let rec sol: (string * ty) list * map * ty -> (ty -> ty) = fun (env, m, t) ->
     value := !value + 1;
     let s = sol (env, m1, PAIR (newty, t)) in
     typeenv := maptl s env;
-    let s' = sol (maptl s env, m2, s newty) in
-    compfun s' s
+    let s' = sol (maptl s env, m2, apply s newty) in
+    s'@s
   | Guide (str, m') ->
     let newty1 = VAL (string_of_int !value) in
     let newty2 = VAL (string_of_int (!value + 1)) in
-    value := !value + 1;
+    value := !value + 2;
     let s = unify (PAIR(newty1, newty2)) t in
-    typeenv := maptl s env @ [(str, s newty1)];
-    let s' = sol (maptl s env @ [(str, s newty1)], m', s newty2) in
-    compfun s' s
+    typeenv := maptl s env @ [(str, apply s newty1)];
+    let s' = sol (maptl s env @ [(str, apply s newty1)], m', apply s newty2) in
+    s'@s
 
 let rec tytokey: ty -> key = fun t ->
   match t with
@@ -116,9 +112,13 @@ let remove_duplicate: key list -> key list = fun kl ->
     | x::xs -> go (remove_elt x xs) (x::acc) in
   go kl []
 
-let getReady: map -> key list = fun m ->
+let init: unit =
+  value := 0;
   treasurelist := [];
-  typeenv := [];
+  typeenv := []
+
+let getReady: map -> key list = fun m ->
+  init;
   let initty = VAL (string_of_int !value) in
   value := !value + 1;
   let _ = sol ([], m, initty) in
