@@ -32,7 +32,7 @@ let rec apply: substitution -> ty -> ty = fun s t ->
   match t with
   | BAR -> BAR
   | VAL x -> if List.mem_assoc x s then List.assoc x s else t
-  | PAIR (t1, t2) -> apply s t2
+  | PAIR (t1, t2) -> PAIR(apply s t1, apply s t2)
 
 let rec unify: ty -> ty -> substitution = fun t t' ->
   match (t, t') with
@@ -44,7 +44,7 @@ let rec unify: ty -> ty -> substitution = fun t t' ->
   | (VAL x, PAIR (t1, t2)) -> if occurs x t' then raise IMPOSSIBLE else [(x, t')]
   | (PAIR (t1, t2), PAIR (t1', t2')) -> 
     let s = unify t1 t1' in
-    unify (apply s t2) (apply s t2')
+    (unify (apply s t2) (apply s t2'))@s
   | (_, _) -> raise IMPOSSIBLE
 
 let value = ref 0
@@ -66,8 +66,8 @@ let rec sol: map * ty -> substitution = fun (m, t) ->
     | NameBox str -> 
       if (List.mem_assoc str !typeenv) then unify t (List.assoc str !typeenv)
       else
-        (typeenv := (str, t)::!typeenv;
-        unify t (VAL str)))
+        (typeenv := (unify (VAL str) t) @ !typeenv;
+        unify (VAL str) t))
   | Branch (m1, m2) ->
     let newty = VAL (string_of_int !value) in
     value := !value + 1;
