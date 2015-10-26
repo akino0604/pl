@@ -34,6 +34,30 @@ let rec apply: substitution -> ty -> ty = fun s t ->
   | VAL x -> if List.mem_assoc x s then List.assoc x s else t
   | PAIR (t1, t2) -> PAIR(apply s t1, apply s t2)
 
+let rec rmsamekey: substitution -> substitution -> substitution = fun s1 s2 ->
+  match s2 with
+  | [] -> s1
+  | (str, t)::tl ->
+    if List.mem_assoc str s1
+      then rmsamekey (List.remove_assoc str s1) tl
+    else
+      rmsamekey s1 tl
+
+let rec replace: string -> string -> substitution -> substitution = fun x y s ->
+  match s with
+  | [] -> []
+  | (str, ty)::tl -> if str = x then (y, ty)::(replace x y tl) else replace x y tl
+
+let rec compose: substitution -> substitution -> substitution = fun s1 s2 ->
+  match s1 with
+  | [] -> []
+  | (str, ty)::tl ->
+   (match ty with
+    | VAL x ->
+      if List.mem_assoc x s2 then (str, List.assoc x s2)::(compose tl s2)
+      else (str, ty)::(compose tl s2)
+    | _ -> (str, ty)::(compose tl s2))
+
 let rec unify: ty -> ty -> substitution = fun t t' ->
   match (t, t') with
   | (BAR, BAR) -> []
@@ -45,7 +69,7 @@ let rec unify: ty -> ty -> substitution = fun t t' ->
   | (PAIR (t1, t2), PAIR (t1', t2')) -> 
     let s = unify t1 t1' in
     let s' = unify (apply s t2) (apply s t2') in
-    s'@s
+    (compose (rmsamekey s' s) s)@s
   | (_, _) -> raise IMPOSSIBLE
 
 let value = ref 0
@@ -75,15 +99,17 @@ let rec sol: map * ty -> substitution = fun (m, t) ->
     let s = sol (m1, PAIR (newty, t)) in
     typeenv := maptl s !typeenv;
     let s' = sol (m2, apply s newty) in
-    s'@s
+    (compose (rmsamekey s' s) s)@s
   | Guide (str, m') ->
     let newty1 = VAL (string_of_int !value) in
     let newty2 = VAL (string_of_int (!value + 1)) in
     value := !value + 2;
     let s = unify (PAIR(newty1, newty2)) t in
-    typeenv := maptl s !typeenv @ [(str, apply s newty1)];
+    let t = maptl s !typeenv in
+    let news = [(str, apply s newty1)] in
+    typeenv := (compose (rmsamekey t news) news)@news;
     let s' = sol (m', apply s newty2) in
-    s'@s
+    (compose (rmsamekey s' s) s)@s
 
 let rec tytokey: ty -> key = fun t ->
   match t with
