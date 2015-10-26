@@ -44,7 +44,8 @@ let rec unify: ty -> ty -> substitution = fun t t' ->
   | (VAL x, PAIR (t1, t2)) -> if occurs x t' then raise IMPOSSIBLE else [(x, t')]
   | (PAIR (t1, t2), PAIR (t1', t2')) -> 
     let s = unify t1 t1' in
-    (unify (apply s t2) (apply s t2'))@s
+    let s' = unify (apply s t2) (apply s t2') in
+    s'@s
   | (_, _) -> raise IMPOSSIBLE
 
 let value = ref 0
@@ -121,9 +122,18 @@ let init ((): unit): unit =
   typeenv := [];
   ()
 
+let rec tilend: substitution -> unit = fun s ->
+  let t1 = !typeenv in
+  let t2 = maptl s !typeenv in
+  if not (t1 = t2)
+    then
+      (typeenv := maptl s !typeenv;
+      tilend s)
+
 let getReady: map -> key list = fun m ->
   init ();
   let initty = VAL (string_of_int !value) in
   value := !value + 1;
-  let _ = sol (m, initty) in
+  let s = sol (m, initty) in
+  tilend s;
   remove_duplicate (extract !typeenv !treasurelist)
