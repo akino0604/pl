@@ -28,8 +28,11 @@ let rec subst: string -> ty -> ty -> ty = fun x t t' ->
   | VAL y -> if x = y then t else t'
   | PAIR (t1, t2) -> PAIR (subst x t t1, subst x t t2)
 
-let apply: substitution -> ty -> ty = fun s t ->
-  List.fold_right (fun (x, u) -> subst x u) s t
+let rec apply: substitution -> ty -> ty = fun s t ->
+  match t with
+  | BAR -> BAR
+  | VAL x -> if List.mem_assoc x s then List.assoc x s else t
+  | PAIR (t1, t2) -> apply s t
 
 let rec unify: ty -> ty -> substitution = fun t t' ->
   match (t, t') with
@@ -112,13 +115,14 @@ let remove_duplicate: key list -> key list = fun kl ->
     | x::xs -> go (remove_elt x xs) (x::acc) in
   go kl []
 
-let init: unit =
+let init ((): unit): unit =
   value := 0;
   treasurelist := [];
-  typeenv := []
+  typeenv := [];
+  ()
 
 let getReady: map -> key list = fun m ->
-  init;
+  init ();
   let initty = VAL (string_of_int !value) in
   value := !value + 1;
   let _ = sol ([], m, initty) in
