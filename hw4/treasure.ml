@@ -34,15 +34,6 @@ let rec apply: substitution -> ty -> ty = fun s t ->
   | VAL x -> if List.mem_assoc x s then List.assoc x s else t
   | PAIR (t1, t2) -> PAIR(apply s t1, apply s t2)
 
-let rec rmsamekey: substitution -> substitution -> substitution = fun s1 s2 ->
-  match s2 with
-  | [] -> s1
-  | (str, t)::tl ->
-    if List.mem_assoc str s1
-      then rmsamekey (List.remove_assoc str s1) tl
-    else
-      rmsamekey s1 tl
-
 let rec replace: string -> string -> substitution -> substitution = fun x y s ->
   match s with
   | [] -> []
@@ -71,6 +62,14 @@ let rec unify: ty -> ty -> substitution = fun t t' ->
     let s' = unify (apply s t2) (apply s t2') in
     (compose (rmsamekey s' s) s)@s
   | (_, _) -> raise IMPOSSIBLE
+and rmsamekey: substitution -> substitution -> substitution = fun s1 s2 ->
+  match s2 with
+  | [] -> s1
+  | (str, t)::tl ->
+    if List.mem_assoc str s1
+      then unify t (List.assoc str s1)
+    else
+      rmsamekey s1 tl
 
 let value = ref 0
 let treasurelist = ref []
