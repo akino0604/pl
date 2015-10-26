@@ -60,16 +60,22 @@ let rec unify: ty -> ty -> substitution = fun t t' ->
   | (PAIR (t1, t2), PAIR (t1', t2')) -> 
     let s = unify t1 t1' in
     let s' = unify (apply s t2) (apply s t2') in
-    (compose (rmsamekey s' s) s)@s
+    (compose (unifysamekey s' s) s)@(rmsamekey s' s)
   | (_, _) -> raise IMPOSSIBLE
 and rmsamekey: substitution -> substitution -> substitution = fun s1 s2 ->
+  match s1 with
+  | [] -> s2
+  | (str, t)::tl ->
+    if List.mem_assoc str s2 then rmsamekey tl (List.remove_assoc str s2)
+    else rmsamekey tl s2
+and unifysamekey: substitution -> substitution -> substitution = fun s1 s2 ->
   match s2 with
   | [] -> s1
   | (str, t)::tl ->
     if List.mem_assoc str s1
       then unify t (List.assoc str s1)
     else
-      rmsamekey s1 tl
+      unifysamekey s1 tl
 
 let value = ref 0
 let treasurelist = ref []
@@ -98,7 +104,7 @@ let rec sol: map * ty -> substitution = fun (m, t) ->
     let s = sol (m1, PAIR (newty, t)) in
     typeenv := maptl s !typeenv;
     let s' = sol (m2, apply s newty) in
-    (compose (rmsamekey s' s) s)@s
+    (compose (unifysamekey s' s) s)@(rmsamekey s' s)
   | Guide (str, m') ->
     let newty1 = VAL (string_of_int !value) in
     let newty2 = VAL (string_of_int (!value + 1)) in
@@ -106,9 +112,9 @@ let rec sol: map * ty -> substitution = fun (m, t) ->
     let s = unify (PAIR(newty1, newty2)) t in
     let t = maptl s !typeenv in
     let news = [(str, apply s newty1)] in
-    typeenv := (compose (rmsamekey t news) news)@news;
+    typeenv := (compose (unifysamekey t news) news)@(rmsamekey t news);
     let s' = sol (m', apply s newty2) in
-    (compose (rmsamekey s' s) s)@s
+    (compose (unifysamekey s' s) s)@(rmsamekey s' s)
 
 let rec tytokey: ty -> key = fun t ->
   match t with
