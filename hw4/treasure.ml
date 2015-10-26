@@ -32,7 +32,7 @@ let rec apply: substitution -> ty -> ty = fun s t ->
   match t with
   | BAR -> BAR
   | VAL x -> if List.mem_assoc x s then List.assoc x s else t
-  | PAIR (t1, t2) -> apply s t
+  | PAIR (t1, t2) -> apply s t2
 
 let rec unify: ty -> ty -> substitution = fun t t' ->
   match (t, t') with
@@ -73,7 +73,7 @@ let rec sol: (string * ty) list * map * ty -> substitution = fun (env, m, t) ->
     value := !value + 1;
     let s = sol (env, m1, PAIR (newty, t)) in
     typeenv := maptl s env;
-    let s' = sol (maptl s env, m2, apply s newty) in
+    let s' = sol (!typeenv, m2, apply s newty) in
     s'@s
   | Guide (str, m') ->
     let newty1 = VAL (string_of_int !value) in
@@ -81,7 +81,7 @@ let rec sol: (string * ty) list * map * ty -> substitution = fun (env, m, t) ->
     value := !value + 2;
     let s = unify (PAIR(newty1, newty2)) t in
     typeenv := maptl s env @ [(str, apply s newty1)];
-    let s' = sol (maptl s env @ [(str, apply s newty1)], m', apply s newty2) in
+    let s' = sol (!typeenv, m', apply s newty2) in
     s'@s
 
 let rec tytokey: ty -> key = fun t ->
