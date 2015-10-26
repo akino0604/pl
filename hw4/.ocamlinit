@@ -1,0 +1,4 @@
+#use "treasure.ml";;
+
+let map = Branch(End(NameBox "x"), End(StarBox));;
+getReady map;;

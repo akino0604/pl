@@ -57,31 +57,31 @@ let maptl: substitution -> (string * ty) list -> (string * ty) list = fun sl env
   let ftyl = List.map (apply sl) tyl in
   List.combine strl ftyl
 
-let rec sol: (string * ty) list * map * ty -> substitution = fun (env, m, t) ->
+let rec sol: map * ty -> substitution = fun (m, t) ->
   match m with
   | End treasure ->
     treasurelist := treasure::!treasurelist;
    (match treasure with
     | StarBox -> unify BAR t
     | NameBox str -> 
-      if (List.mem_assoc str env) then unify t (List.assoc str env)
+      if (List.mem_assoc str !typeenv) then unify t (List.assoc str !typeenv)
       else
         (typeenv := (str, t)::!typeenv;
         unify t (VAL str)))
   | Branch (m1, m2) ->
     let newty = VAL (string_of_int !value) in
     value := !value + 1;
-    let s = sol (env, m1, PAIR (newty, t)) in
-    typeenv := maptl s env;
-    let s' = sol (!typeenv, m2, apply s newty) in
+    let s = sol (m1, PAIR (newty, t)) in
+    typeenv := maptl s !typeenv;
+    let s' = sol (m2, apply s newty) in
     s'@s
   | Guide (str, m') ->
     let newty1 = VAL (string_of_int !value) in
     let newty2 = VAL (string_of_int (!value + 1)) in
     value := !value + 2;
     let s = unify (PAIR(newty1, newty2)) t in
-    typeenv := maptl s env @ [(str, apply s newty1)];
-    let s' = sol (!typeenv, m', apply s newty2) in
+    typeenv := maptl s !typeenv @ [(str, apply s newty1)];
+    let s' = sol (m', apply s newty2) in
     s'@s
 
 let rec tytokey: ty -> key = fun t ->
@@ -125,5 +125,5 @@ let getReady: map -> key list = fun m ->
   init ();
   let initty = VAL (string_of_int !value) in
   value := !value + 1;
-  let _ = sol ([], m, initty) in
+  let _ = sol (m, initty) in
   remove_duplicate (extract !typeenv !treasurelist)
