@@ -25,8 +25,8 @@ module Translator = struct
     | K.NOT e -> trans e @ [Sm5.NOT]
     | K.ASSIGN (x, e) -> trans e @ [Sm5.BIND x; Sm5.PUSH (Sm5.Id x); Sm5.STORE]
     | K.SEQ (e1, e2) -> trans e1 @ trans e2
-    | K.IF (e1, e2, e3) -> raise (Error "Unimplemented")
-    | K.WHILE (e1, e2) -> raise (Error "Unimplemented")
+    | K.IF (e1, e2, e3) -> trans e1 @ [Sm5.JTR (trans e2, trans e3)]
+    | K.WHILE (e1, e2) -> trans e1 @ [Sm5.JTR (trans e2 @ trans K.WHILE (e1, e2), [Sm5.PUSH (Sm5.UNIT); Sm5.STORE])]
     | K.FOR (x, e1, e2, e3) -> raise (Error "Unimplemented")
     | K.LETV (x, e1, e2) ->
       trans e1 @ [Sm5.MALLOC; Sm5.BIND x; Sm5.PUSH (Sm5.Id x); Sm5.STORE] @
