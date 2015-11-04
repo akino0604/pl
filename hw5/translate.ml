@@ -1,3 +1,4 @@
+exception Error of string
 (*
  * SNU 4190.310 Programming Languages 
  * K-- to SM5 translator skeleton code
@@ -14,7 +15,7 @@ module Translator = struct
     | K.TRUE -> [Sm5.PUSH (Sm5.Val (Sm5.B true))]
     | K.FALSE -> [Sm5.PUSH (Sm5.Val (Sm5.B false))]
     | K.UNIT -> [Sm5.PUSH (Sm5.Val (Sm5.Unit))]
-    | K.VAR x -> raise (Error "Unimplemented")
+    | K.VAR x -> [Sm5.PUSH (Sm5.Id x); Sm5.LOAD]
     | K.ADD (e1, e2) -> trans e1 @ trans e2 @ [Sm5.ADD]
     | K.SUB (e1, e2) -> trans e1 @ trans e2 @ [Sm5.SUB]
     | K.MUL (e1, e2) -> trans e1 @ trans e2 @ [Sm5.MUL]
@@ -22,8 +23,8 @@ module Translator = struct
     | K.EQUAL (e1, e2) -> trans e1 @ trans e2 @ [Sm5.EQ]
     | K.LESS (e1, e2) -> trans e1 @ trans e2 @ [Sm5.LESS]
     | K.NOT e -> trans e @ [Sm5.NOT]
-    | K.ASSIGN (x, e) -> raise (Error "Unimplemented")
-    | K.SEQ (e1, e2) -> raise (Error "Unimplemented")
+    | K.ASSIGN (x, e) -> trans e @ [Sm5.BIND x; Sm5.PUSH (Sm5.Id x); Sm5.STORE]
+    | K.SEQ (e1, e2) -> trans e1 @ trans e2
     | K.IF (e1, e2, e3) -> raise (Error "Unimplemented")
     | K.WHILE (e1, e2) -> raise (Error "Unimplemented")
     | K.FOR (x, e1, e2, e3) -> raise (Error "Unimplemented")
@@ -34,5 +35,5 @@ module Translator = struct
     | K.CALLV (x, e) -> raise (Error "Unimplemented")
     | K.CALLR (x, y) -> raise (Error "Unimplemented")
     | K.READ x -> [Sm5.GET; Sm5.PUSH (Sm5.Id x); Sm5.STORE; Sm5.PUSH (Sm5.Id x); Sm5.LOAD]
-    | K.WRITE e -> raise (Error "Unimplemented")
+    | K.WRITE e -> trans e @ [Sm5.PUT]
 end
