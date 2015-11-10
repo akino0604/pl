@@ -26,22 +26,18 @@ module Translator = struct
     | K.ASSIGN (x, e) -> trans e @ [Sm5.PUSH (Sm5.Id x); Sm5.STORE]
     | K.SEQ (e1, e2) -> trans e1 @ trans e2
     | K.IF (e1, e2, e3) -> trans e1 @ [Sm5.JTR (trans e2, trans e3)]
-    | K.WHILE (e1, e2) ->
-      trans e1 @ [Sm5.JTR ((trans e2 @ trans (K.WHILE (e1, e2))), [Sm5.PUSH (Sm5.Val Sm5.Unit); Sm5.STORE])]
-    | K.FOR (x, e1, e2, e3) ->
-      trans e1 @ [Sm5.PUSH (Sm5.Id x); Sm5.STORE; Sm5.PUSH (Sm5.Id x); Sm5.LOAD] @ trans e2 @ [Sm5.LESS] @
-      [Sm5.JTR (trans e3 @ [Sm5.PUSH (Sm5.Fn (x, trans e3)); Sm5.BIND "#"; Sm5.PUSH (Sm5.Val (Sm5.Z 1)); Sm5.PUSH (Sm5.Id x); Sm5.LOAD; Sm5.ADD; ]
-      ([Sm5.POP; Sm5.POP] @ trans e3 @ trans (K.FOR (x, K.ADD (e1, K.NUM 1), e2, e3)) @ [Sm5.PUSH (Sm5.Val Sm5.Unit); Sm5.STORE]
-                , [Sm5.POP; Sm5.POP; Sm5.PUSH (Sm5.Val Sm5.Unit); Sm5.STORE])]
+    | K.WHILE (e1, e2) -> raise (Error "Unimplemented")
+    | K.FOR (x, e1, e2, e3) -> raise (Error "Unimplemented")
     | K.LETV (x, e1, e2) ->
       trans e1 @ [Sm5.MALLOC; Sm5.BIND x; Sm5.PUSH (Sm5.Id x); Sm5.STORE] @
       trans e2 @ [Sm5.UNBIND; Sm5.POP]
     | K.LETF (f, x, e1, e2) ->
-      [Sm5.PUSH (Sm5.Fn (x, trans e1)); Sm5.BIND f] @ trans e2 @ [Sm5.UNBIND; Sm5.POP]
+      let body = [Sm5.BIND f] @ trans e1 @ [Sm5.UNBIND; Sm5.POP] in
+      [Sm5.PUSH (Sm5.Fn (x, body)); Sm5.BIND f] @ trans e2 @ [Sm5.UNBIND; Sm5.POP]
     | K.CALLV (f, e) ->
-      [Sm5.PUSH (Sm5.Id f)] @ trans e @ [Sm5.MALLOC; Sm5.CALL]
+      [Sm5.PUSH (Sm5.Id f); Sm5.PUSH (Sm5.Id f)] @ trans e @ [Sm5.MALLOC; Sm5.CALL]
     | K.CALLR (f, x) ->
-      [Sm5.PUSH (Sm5.Id f); Sm5.PUSH (Sm5.Id x); Sm5.LOAD; Sm5.PUSH (Sm5.Id x); Sm5.CALL; Sm5.PUSH (Sm5.Id x); Sm5.LOAD]
+      [Sm5.PUSH (Sm5.Id f); Sm5.PUSH (Sm5.Id f); Sm5.PUSH (Sm5.Id x); Sm5.LOAD; Sm5.PUSH (Sm5.Id x); Sm5.CALL; Sm5.PUSH (Sm5.Id x); Sm5.LOAD]
     | K.READ x -> [Sm5.GET; Sm5.PUSH (Sm5.Id x); Sm5.STORE; Sm5.PUSH (Sm5.Id x); Sm5.LOAD]
-    | K.WRITE e -> trans e @ [Sm5.PUT]
+    | K.WRITE e -> trans e @ [Sm5.MALLOC; Sm5.BIND "#"; Sm5.PUSH (Sm5.Id "#"); Sm5.STORE; Sm5.PUSH (Sm5.Id "#"); Sm5.LOAD; Sm5.PUT; Sm5.PUSH (Sm5.Id "#")]
 end
