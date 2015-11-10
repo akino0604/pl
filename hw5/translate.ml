@@ -23,14 +23,17 @@ module Translator = struct
     | K.EQUAL (e1, e2) -> trans e1 @ trans e2 @ [Sm5.EQ]
     | K.LESS (e1, e2) -> trans e1 @ trans e2 @ [Sm5.LESS]
     | K.NOT e -> trans e @ [Sm5.NOT]
-    | K.ASSIGN (x, e) -> trans e @ [Sm5.PUSH (Sm5.Id x); Sm5.STORE]
+    | K.ASSIGN (x, e) -> trans e @ [Sm5.PUSH (Sm5.Id x); Sm5.STORE; Sm5.PUSH (Sm5.Id x); Sm5.LOAD]
     | K.SEQ (e1, e2) -> trans e1 @ trans e2
     | K.IF (e1, e2, e3) -> trans e1 @ [Sm5.JTR (trans e2, trans e3)]
     | K.WHILE (e1, e2) ->
       let w = K.LETF ("func!", "@", K.IF (K.VAR "@", K.SEQ (e2, K.CALLV ("func!", e1)), K.UNIT), K.CALLV ("func!", e1)) in
       trans w
     | K.FOR (x, e1, e2, e3) ->
-      let f = K.LETF ("func!", "@", K.IF (K.VAR "@", e3, K.SEQ (e3, K.UNIT)), K.CALLV ("func!", K.LESS (K.ADD (K.NUM 1, K.VAR "@"), e2))) in
+      let f = K.LETF ("func!", "@",
+                      K.IF (K.VAR "@", K.SEQ (K.SEQ (e3, K.ASSIGN (x, K.ADD (K.VAR x, K.NUM 1))),
+                            K.CALLV ("func!", K.LESS (K.VAR x, e2))), K.SEQ (e3, K.UNIT)),
+                      K.SEQ (K.ASSIGN (x, e1), K.CALLV ("func!", K.LESS (K.VAR x, e2)))) in
       trans f
     | K.LETV (x, e1, e2) ->
       trans e1 @ [Sm5.MALLOC; Sm5.BIND x; Sm5.PUSH (Sm5.Id x); Sm5.STORE] @
