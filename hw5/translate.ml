@@ -27,10 +27,10 @@ module Translator = struct
     | K.SEQ (e1, e2) -> trans e1 @ trans e2
     | K.IF (e1, e2, e3) -> trans e1 @ [Sm5.JTR (trans e2, trans e3)]
     | K.WHILE (e1, e2) ->
-      let rec w = K.IF (e1, K.SEQ (e2, w), K.UNIT) in
+      let w = K.LETF ("func!", "@", K.IF (K.VAR "@", K.SEQ (e2, K.CALLV ("func!", e1)), K.UNIT), K.CALLV ("func!", e1)) in
       trans w
     | K.FOR (x, e1, e2, e3) ->
-      let rec f = K.IF (K.LESS (e1, e2), K.SEQ (e3, f), K.SEQ (e3, K.UNIT)) in
+      let f = K.LETF ("func!", "@", K.IF (K.VAR "@", e3, K.SEQ (e3, K.UNIT)), K.CALLV ("func!", K.LESS (K.ADD (K.NUM 1, K.VAR "@"), e2))) in
       trans f
     | K.LETV (x, e1, e2) ->
       trans e1 @ [Sm5.MALLOC; Sm5.BIND x; Sm5.PUSH (Sm5.Id x); Sm5.STORE] @
