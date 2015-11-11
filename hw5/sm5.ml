@@ -176,15 +176,53 @@ struct
   (* TODO : complete this function.
    * Implement the GC algorithm introduced in class material.
    *)
-  let malloc_with_gc s m e c k =
+  let rec find_loc_rec (r: record) (m: memory) =
+    match r with
+    | [] -> []
+    | (_, l)::tl -> l :: (find_loc_mem l m) @ (find_loc_rec tl m)
+  and find_loc_env (e: environment) (m: memory) =
+    match e with
+    | [] -> []
+    | (_, Loc l)::tl -> l :: (find_loc_mem l m) @ (find_loc_env tl m)
+    | (_, Proc (_, _, env))::tl -> (find_loc_env env m) @ (find_loc_env tl m)
+  and  find_loc_stack s m =
+    match s with
+    | [] -> []
+    | V value::tl ->
+     (match value with
+      | L l -> l :: (find_loc_mem l m)
+      | R r -> (find_loc_rec r m) @ (find_loc_stack tl m)
+      | _ -> find_loc_stack tl m)
+    | P (_, _, env)::tl -> (find_loc_env env m) @ (find_loc_stack tl m)
+    | M (_, Loc l)::tl -> l::(find_loc_stack tl m)
+    | M (_, Proc (_, _, env))::tl -> (find_loc_env env m) @ (find_loc_stack tl m)
+  and find_loc_mem l m =
+    let con = List.assoc l m in
+    match con with
+    | L newl -> newl :: (find_loc_mem newl m)
+    | R record -> find_loc_rec record m
+    | _ -> []
+
+  let rec remove_duplicate l l' =
+    match l' with
+    | hd::tl -> if List.mem hd l then remove_duplicate l tl else remove_duplicate (hd::l) tl
+    | [] -> l
+
+  let malloc_with_gc (s: stack) (m: memory) (e: environment) (c: command) (k: continuation) =
     if List.length m < mem_limit then
       let _ = loc_id := !loc_id + 1 in
       ((!loc_id, 0), m)
     else
       let _ = reachable_locs := [] in
-      (* TODO : Add the code that marks the reachable locations.
-       * let _ = ... 
-       *)
+      (* TODO : Add the code that marks the reachable locations. *)
+      reachable_locs := remove_duplicate !reachable_locs (find_loc_env e m);
+      let rec recur envl m =
+        match envl with
+        | [] -> []
+        | hd::tl -> remove_duplicate !reachable_locs (find_loc_env hd m) @ (recur tl m) in
+      reachable_locs := recur (snd (List.split k)) m;
+      reachable_locs := remove_duplicate !reachable_locs (find_loc_stack s m);
+      (*  *)
       let new_m = List.filter (fun (l, _) -> List.mem l !reachable_locs) m in
       if List.length new_m < mem_limit then
         let _ = loc_id := !loc_id + 1 in
