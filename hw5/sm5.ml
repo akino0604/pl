@@ -216,11 +216,11 @@ struct
       let _ = reachable_locs := [] in
       (* TODO : Add the code that marks the reachable locations. *)
       reachable_locs := remove_duplicate !reachable_locs (find_loc_env e m);
-      let rec recur envl m =
+      let rec recur l envl m =
         match envl with
-        | [] -> []
-        | hd::tl -> remove_duplicate !reachable_locs (find_loc_env hd m) @ (recur tl m) in
-      reachable_locs := recur (snd (List.split k)) m;
+        | [] -> l
+        | hd::tl -> recur (remove_duplicate l (find_loc_env hd m)) tl m in
+      reachable_locs := recur !reachable_locs (snd (List.split k)) m;
       reachable_locs := remove_duplicate !reachable_locs (find_loc_stack s m);
       (*  *)
       let new_m = List.filter (fun (l, _) -> List.mem l !reachable_locs) m in
