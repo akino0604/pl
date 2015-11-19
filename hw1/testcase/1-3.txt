@@ -1,0 +1,36 @@
+[Header]
+
+[Test]
+iter(10, fun x -> x + 3) 100
+
+[Value]
+130
+
+[Test]
+(* base case (i=0) *)
+iter(0, fun x -> x + 3) 200
+
+[Value]
+200
+
+[Test]
+(* test 3 *)
+iter (3, List.tl) [1;2;3;4;5;6]
+
+[Value]
+[4;5;6]
+
+[Test]
+(* test 4 *)
+iter (4, (fun s -> s ^ s)) "a"
+
+[Value]
+"aaaaaaaaaaaaaaaa"
+
+[Test]
+(* test 5 *)
+let rotate_triple (x,y,z) = (z, x, y) in
+iter (5, rotate_triple) (1,2,3)
+
+[Value]
+(2, 3, 1)

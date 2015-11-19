@@ -1,0 +1,36 @@
+[Header]
+
+[Test]
+(* base case 1 *)
+sigma (10, 10, fun x -> x)
+
+[Value]
+10
+
+[Test]
+(* base case 2 *)
+sigma (11, 10, fun x -> x)
+
+[Value]
+0
+
+[Test]
+(* base case 2' *)
+sigma (10, 5, fun x -> x)
+
+[Value]
+0
+
+[Test]
+(* test 4 *)
+sigma (1, 10, fun x -> if x mod 2 = 0 then 1 else 0 )
+
+[Value]
+5
+
+[Test]
+(* test 5 *)
+sigma (1, 10, fun x -> x * x)
+
+[Value]
+385

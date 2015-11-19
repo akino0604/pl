@@ -1,0 +1,117 @@
+[Header]
+
+let check_exception m = 
+  try (let _ = getReady m in false) with IMPOSSIBLE -> true
+
+let check_answer m ans = 
+  let res = List.sort Pervasives.compare (getReady m) in
+  let ans = List.sort Pervasives.compare ans in
+  res = ans
+
+[Test]
+(*1*)
+check_answer
+(Guide ("1", Branch (Branch (End (NameBox "1"), End (StarBox)), Guide ("2", End (NameBox "2")))))
+[Bar; Node (Bar, Node (Node (Bar, Bar), Bar))]
+[Value]
+true
+
+[Test]
+(*2*)
+check_answer 
+(Branch (Guide ("x", End (NameBox "x")), Guide ("y", End (NameBox "y"))))
+[Bar; (Node (Bar, Bar))]
+[Value]
+true
+
+[Test]
+(*3*)
+check_answer
+(Branch(Branch(Branch(Branch(End (NameBox "a"), End(NameBox "b")), End(NameBox "c")),Branch(Branch(End (NameBox "d"), End(NameBox "e")), End(NameBox "f"))),Branch(End (NameBox "c"), End StarBox)))
+[Bar; Node (Bar, Bar); Node (Bar, Node (Bar, Bar)); Node (Bar, Node (Node (Bar, Bar), Node (Bar, Node (Bar, Bar)))) ]
+[Value]
+true
+
+[Test]
+(*4*)
+check_answer
+(Branch (Branch (Branch (Branch (End(NameBox"a"), End(NameBox"b")), End(NameBox"c")), Branch (Branch(End(NameBox"d"),End(NameBox"e")), End(NameBox"f"))), Branch(End(NameBox"f"), Guide("r", End (NameBox "r")))))
+[ Bar;
+  Node (Node (Bar, Bar), Bar);
+  Node (Bar, Node (Node (Node (Bar, Bar), Bar), Bar)); 
+  Node (Bar, Node (Bar, Node (Bar, Node (Bar, Bar))))]
+  
+[Value]
+true
+
+[Test]
+(*5*)
+check_exception (Branch (Guide ("c", Branch (Branch(Guide ("a", Branch (End (NameBox "a"), End (NameBox "b"))), Branch (End (NameBox "b"), End (NameBox "a"))), End (NameBox "c"))), End StarBox))
+
+[Value]
+true
+
+[Test]
+(*6*)
+check_answer 
+(Branch (Branch (Branch (Guide ("x", Guide ("y", Guide ("z", Branch
+	  (Branch (End (NameBox "x"), End (NameBox "y")), End (NameBox "z"))))),
+	  End (NameBox "a")), End (NameBox "b")), End (NameBox "c")))
+[Bar; (Node (Bar, Node (Bar, Bar)))]
+[Value]
+true
+
+[Test]
+(*7*)
+check_answer
+(Branch (End (NameBox "z"),
+	  Guide ("x", Branch( Guide("y", Branch( End (NameBox "x"), End (NameBox "y"))), End StarBox))))
+[Bar; (Node (Bar, Bar)); (Node (Node (Node (Bar, Bar), Bar), Bar))]
+[Value]
+true
+
+[Test]
+(*8*)
+check_exception (Branch(Branch(Branch(Branch(End (NameBox "a"), End(NameBox "b")), End(NameBox "c")),Branch(Branch(End (NameBox "d"), End(NameBox "e")), End(NameBox "f"))),Branch(End (NameBox "a"), End StarBox)))
+
+[Value]
+true
+
+[Test]
+(*9*)
+check_answer 
+(Branch (Branch (End (NameBox "y"), End StarBox ), Guide ("x", Branch (End (NameBox "x"), End StarBox))))
+[Bar; (Node (Bar, Bar)); (Node (Bar, Node (Node (Node (Bar, Bar), Bar), Bar)))]
+[Value]
+true
+
+[Test]
+(*10*)
+check_answer
+(Branch(Guide ("x", (Guide ("y", Guide ("z", Guide ("w", Branch (Branch (End (NameBox "x"), End (NameBox "y")), Branch (End (NameBox "z"), End (NameBox "w")))))))), Guide ("a", Branch (End (NameBox "a"),End (NameBox "b")))))
+[Bar; (Node (Bar, Bar)); (Node (Bar, (Node (Bar, Bar)))); Node ((Node (Bar, (Node (Bar, Bar)))), (Node (Bar, Bar)))]
+
+[Value]
+true
+
+
+[Test]
+(* 11 *)
+check_answer
+(Branch (Branch (Branch (Guide ("b", Guide ("a", Branch (End (NameBox "a"), End (NameBox "b")))), End (NameBox "c")), Guide ("d", End (NameBox "d"))), End (NameBox "e")))
+[Bar; Node (Bar, Bar); Node (Node (Bar, Bar), Node (Bar, Bar))]
+[Value]
+true
+
+[Test]
+(* 12 *)
+check_answer
+(Branch ((Branch (Branch ((Branch ((Branch ((Branch ((End (NameBox "Grace")) , 
+ (End (NameBox "Henri")))) , (Branch ((End (NameBox "Ida")) , (End (NameBox "Joaquin")))))) , (End (NameBox "Kate")))) , 
+ (Branch ((End (NameBox "Larry")) , (Branch ((End (NameBox "Mindy")) , (Guide ("Nicholas", (End (NameBox "Nicholas"))))))))), (End (NameBox "Danny")))) , (Branch ((End (NameBox "Erika")) , 
+ (Guide ("Fred", (End (NameBox "Fred"))))))))
+[Node (Node (Bar, Bar), Bar); Node (Bar, Bar); Bar;
+ Node (Bar, Node (Bar, Node (Bar, Node (Bar, Node (Bar, Node (Bar, Bar))))))]
+
+[Value]
+true

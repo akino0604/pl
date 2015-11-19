@@ -1,0 +1,66 @@
+[Header]
+open K
+open Unix
+
+let stdout_redirect_f = "stdout_redirect.txt"
+let stdin_redirect_f = "stdin_redirect.txt"
+
+let read_all filename = 
+  let chan = open_in filename in 
+  let res = really_input_string chan (in_channel_length chan) in
+  let _ = close_in chan in 
+  res
+
+let test input_str = 
+  (* Create program *)
+  let pgm_str = read_all "numch.k-" in
+  let pgm = Parser.program Lexer.start (Lexing.from_string pgm_str) in
+
+  (* Write testcase input string to a file *)
+  let chan = open_out stdin_redirect_f in
+  let _ = Printf.fprintf chan input_str in
+  let _ = close_out chan in 
+
+  (* Stdin Redirection *)
+  let new_stdin = open_in stdin_redirect_f in
+  let _ = Unix.dup2 (Unix.descr_of_in_channel new_stdin) Unix.stdin in
+
+  (* Stdout Redirection *)
+  let new_stdout = open_out stdout_redirect_f in
+  let _ = Unix.dup2 (Unix.descr_of_out_channel new_stdout) Unix.stdout in
+
+  let _ = K.run (K.emptyMemory, K.emptyEnv, pgm) in
+  let _ = flush_all() in (* Current stdout channel must be flushed *)
+  let _ = close_out new_stdout in 
+
+  read_all stdout_redirect_f
+
+[Test]
+test "100"
+
+[Value]
+"12\n"
+
+[Test]
+test "747"
+
+[Value]
+"365\n"
+
+[Test]
+test "1000"
+
+[Value]
+"719\n"
+
+[Test]
+test "3500"
+
+[Value]
+"27770\n"
+
+[Test]
+test "5000"
+
+[Value]
+"93162\n"

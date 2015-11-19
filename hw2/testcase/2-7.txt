@@ -1,0 +1,238 @@
+[Header]
+open Zexpr
+open Unix
+
+let (|>) g f = f g
+
+let redirect_filename = "stdout_redirect.txt"
+
+let test : expr -> int = fun exp ->
+  (* Stdout Redirection *)
+  let new_stdout = open_out redirect_filename in
+  let _ = Unix.dup2 (Unix.descr_of_out_channel new_stdout) Unix.stdout in
+  let _ = print_value (eval (emptyEnv, exp)) in
+  let _ = flush_all() in (* Current stdout channel must be flushed *)
+  let _ = close_out new_stdout in 
+
+  let result_chan = open_in redirect_filename in
+  let res = really_input_string result_chan (in_channel_length result_chan) in
+  int_of_string (String.trim res)
+
+[Test]
+(* 1 *)
+PLUS (NUM 2, MINUS (NUM 3, NUM 5))
+|> test
+
+[Value]
+0
+
+
+[Test]
+(* 2 *)
+let x_squared = MULT(VAR "x", VAR "x") in
+LET("x", NUM 2, PLUS(LET("x", x_squared, x_squared), VAR "x"))
+|> test
+
+[Value]
+18
+
+[Test]
+(* 3 *)
+MULT (NUM 3, DIVIDE (NUM 6, NUM 2))
+|> test
+
+[Value]
+9
+
+[Test]
+(* 4 *)
+MAX [NUM (-1)]
+|> test
+
+[Value]
+(-1)
+
+[Test]
+(* 5 *)
+MAX [NUM 1; NUM 3; NUM 4; NUM 2]
+|> test
+
+[Value]
+4
+
+[Test]
+(*6*)
+VAR "x"
+|> test
+
+[Exception]
+Error("FreeVariable")
+
+[Test]
+(*7*)
+LET ("x", NUM 7, VAR "x")
+|> test
+
+[Value]
+7
+
+[Test]
+(*8*)
+LET ("x", NUM 8, LET ("y", NUM 88, VAR "x"))
+|> test
+
+[Value]
+8
+
+[Test]
+(*9*)
+LET ("x", NUM 9, LET ("x", NUM 99, VAR "x"))
+|> test
+
+[Value]
+99
+
+[Test]
+(*10*)
+LET ("x", NUM 10, LET ("y", NUM 100, DIVIDE (VAR "y", VAR "x")))
+|> test
+
+[Value]
+10
+
+[Test]
+(*11*)
+MAX [NUM 1; LET ("x", NUM 3, VAR "x"); NUM 2]
+|> test
+
+[Value]
+3
+
+[Test]
+(*12*)
+LET ("x", NUM 12,
+	PLUS (
+		LET ("x", NUM 121, VAR "x"),
+		LET ("y", NUM 121, VAR "x")
+	)
+)
+|> test
+
+[Value]
+133
+
+[Test]
+(*13*)
+LET ("x", NUM 13,
+	LET ("y", NUM 131,
+		MINUS (
+			LET ("x", NUM 31, VAR "y"),
+			LET ("y", NUM 313, VAR "x")
+		)
+	)
+)
+|> test
+
+[Value]
+118
+
+[Test]
+(*14*)
+MULT (
+	LET ("x", NUM 14,
+		LET ("y", NUM 41, VAR "x")
+	),
+	LET ("x", NUM 141,
+		LET ("z", NUM 414, VAR "x")
+	)
+)
+|> test
+
+[Value]
+1974
+
+[Test]
+(*15*)
+LET ("x1",
+	MAX [MULT (PLUS (NUM 3, NUM (-6)), NUM 7);
+		NUM 3;
+		NUM 20;
+		NUM 80;
+		LET ("y", NUM 3,
+			DIVIDE (VAR "y", NUM 3)
+		)
+	],
+	LET ("y2", NUM 6,
+		DIVIDE (VAR "x1", PLUS (VAR "y2", NUM 2))
+	)
+)
+|> test
+
+[Value]
+10
+
+[Test]
+(*16*)
+LET ("x", PLUS (NUM 4, NUM 5),
+	LET ("y",
+		MAX [NUM 5; NUM 4; NUM 3],
+		MULT (VAR "x", VAR "y")
+	)
+)
+|> test
+
+[Value]
+45
+
+[Test]
+(*17*)
+LET ("x", NUM 1,
+	PLUS (MULT (VAR "x", VAR "x"),
+	LET ("x", NUM 4,
+		MULT (VAR "x", VAR "x"))))
+|> test
+
+[Value]
+17
+
+[Test]
+(*18*)
+LET ("x", NUM 3,
+	PLUS (
+		VAR "x",
+		MULT (LET ("x", NUM 4,
+			PLUS (
+				VAR "x",
+				LET ("y", NUM 3,
+					MULT (VAR "y", VAR "x")
+				)
+			)
+		),
+		VAR "x")
+	)
+)
+|> test
+
+[Value]
+51
+
+[Test]
+(*19*)
+LET ("x", PLUS (VAR "x", NUM 1), PLUS (VAR "x", NUM 1))
+|> test
+
+[Exception]
+Error("FreeVariable")
+
+[Test]
+(*20*)
+LET ("x", NUM 20,
+	MAX [
+		LET ("y", NUM 202, VAR "x");
+		LET ("z", NUM 2020, VAR "y")
+	]
+)
+|> test
+
+[Exception]
+Error("FreeVariable")

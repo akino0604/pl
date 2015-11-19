@@ -1,0 +1,149 @@
+[Header]
+
+let equals v1 v2 = (abs_float (v1 -. v2)) <= 0.5
+
+let test t answer =
+  let v = galculator t in
+  (abs_float (v -. answer)) <= 1.0
+
+[Test]
+let t0 = X in 
+galculator t0
+
+[Exception]
+FreeVariable
+
+[Test]
+let t1 : exp = INT 4 in
+test t1 4.0
+
+[Value]
+true
+
+[Test]
+let t2 : exp = REAL (-3.0) in
+test t2 (-3.0)
+
+[Value]
+true
+
+[Test]
+let t3 : exp = ADD(INT 2, REAL 3.5) in
+test t3 5.5
+
+[Value]
+true
+
+[Test]
+let t4 : exp = SUB(INT 2, REAL 3.5) in
+test t4 (-1.5)
+
+[Value]
+true
+
+[Test]
+let t5 : exp = MUL(INT 2, REAL 5.5) in
+test t5 11.0
+
+[Value]
+true
+
+[Test]
+let t6 : exp = DIV(REAL 3.0, INT 2) in
+test t6 1.5
+
+[Value]
+true
+
+[Test]
+let t71 : exp = ADD(INT 2, REAL 3.5) in
+let t72 : exp = MUL(INT 2, REAL 5.5) in
+let t73 : exp = DIV(t72, t71) in
+test t73 2.0
+
+[Value]
+true
+
+[Test]
+let t8 : exp = SIGMA (INT 1, INT 10, X) in
+test t8 55.0
+
+[Value]
+true
+
+[Test]
+let t9  : exp = INTEGRAL(INT 0, INT 10, INT 20) in
+test t9 200.
+
+[Value]
+true
+
+[Test]
+let t10 = ADD (INT 1, X) in
+galculator t10
+
+[Exception]
+FreeVariable
+
+[Test]
+let t11 = INTEGRAL (REAL 11.3, REAL 11.45, ADD(X, SIGMA (INT 1, INT 3, X))) in
+test t11 1.73
+
+[Value]
+true
+
+[Test]
+let t12  : exp = SIGMA (INT 1, INT 5, INTEGRAL (INT 0, ADD (X, REAL 0.05), X)) in
+test t12 26.75
+
+[Value]
+true
+
+[Test]
+let t13 : exp = SIGMA (INT 1, INT 5, SIGMA (X, X, SIGMA (X, ADD (X, INT 1), X))) in
+test t13 35.0
+
+[Value]
+true
+
+[Test]
+let t14 = SIGMA (INT 1, X, INTEGRAL (X, X, SIGMA (X, ADD (X, INT 1), X))) in
+galculator t14
+
+[Exception]
+FreeVariable
+
+[Test]
+let t15  : exp = SIGMA (INT 1, INT 3, SIGMA (INT 1, INT 5, X)) in
+test t15 45.0
+
+[Value]
+true
+
+[Test]
+let t16  : exp = INTEGRAL (ADD (INT 1, REAL 0.11), INT 1, X) in
+test t16 (-0.1)
+
+[Value]
+true
+
+[Test]
+let t17  : exp = ADD (INTEGRAL (INT 1, INT 5, X), INTEGRAL (INT 1, INT 5, SUB (INT 0, X))) in
+test t17 0.0
+
+[Value]
+true
+
+[Test]
+let t18 = ADD (SIGMA (INT 1, INT 5, X), SIGMA (X, INT 5, SUB (INT 0, X))) in
+galculator t18
+
+[Exception]
+FreeVariable
+
+[Test]
+let t19  : exp = SIGMA (SIGMA (INT 1, INT 1, X), SIGMA (INT 3, INT 3, X), SIGMA (INT 5, INT 5, X)) in
+test t19 15.0
+
+[Value]
+true

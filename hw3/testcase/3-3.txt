@@ -1,0 +1,106 @@
+[Header]
+open K
+open Unix
+open Str
+
+let redirect_f = "stdout_redirect.txt"
+
+let read_all filename = 
+  let chan = open_in filename in 
+  let res = really_input_string chan (in_channel_length chan) in
+  let _ = close_in chan in
+  res
+
+let replace_last pattern_s new_s s =
+  let idx_1 = Str.search_backward (regexp pattern_s) s (String.length s) in
+  let idx_2 = idx_1 + String.length pattern_s in
+  Str.string_before s idx_1 ^ new_s ^ Str.string_after s idx_2
+
+let test testcase_str = 
+  (* Create program *)
+  let pgm_str = read_all "tree.k-" in
+  let pgm_str = replace_last "2015" testcase_str pgm_str in
+  let pgm = Parser.program Lexer.start (Lexing.from_string pgm_str) in
+ 
+  (* Stdout Redirection *)
+  let new_stdout = open_out redirect_f in
+  let _ = Unix.dup2 (Unix.descr_of_out_channel new_stdout) Unix.stdout in
+
+  let _ = (K.run (K.emptyMemory, K.emptyEnv, pgm)) in
+  let _ = close_out new_stdout in
+
+  read_all redirect_f
+
+[Test]
+(* nodeval *)
+test 
+"
+let tr := makeTree(1, leaf(2), leaf(3)) in
+write (nodeVal (lTree(tr)))
+"
+
+[Value]
+"2\n"
+
+
+[Test]
+(* makeRtree + lTree + isEmpty *)
+test 
+"
+let tr := makeRtree (1, (leaf (2))) in
+if isEmpty (lTree (tr)) then write (1) else write (0)
+"
+
+[Value]
+"1\n"
+
+
+[Test]
+(* makeRtree + rTree + nodeVal *)
+test
+"
+let tr1 := makeRtree (1, leaf (2)) in
+let tr2 := makeTree (3, tr1, leaf (4)) in
+let n1 := nodeVal (rTree (lTree (tr2))) in
+let n2 := nodeVal (tr2) in
+write (n1 + n2)
+"
+
+[Value]
+"5\n"
+
+
+[Test]
+(* dft *)
+test
+"
+let t6 := leaf (7) in
+let t5 := makeLtree (6, t6) in
+let t2 := makeLtree (5, t5) in
+let t4 := leaf (4) in
+let t3 := makeRtree (2, leaf (3)) in
+let t1 := makeTree (1, t3, t4) in
+let t0 := makeTree (0, t1, t2) in
+dft (t0)
+"
+
+[Value]
+"0\n1\n2\n3\n4\n5\n6\n7\n"
+
+
+[Test]
+(* bft *)
+test
+"
+let t6 := leaf (7) in
+let t5 := makeLtree (6, t6) in
+let t2 := makeLtree (5, t5) in
+let t4 := leaf (4) in
+let t3 := makeRtree (2, leaf (3)) in
+let t1 := makeTree (1, t3, t4) in
+let t0 := makeTree (0, t1, t2) in
+bft (t0)
+"
+
+[Value]
+"0\n1\n5\n2\n4\n6\n3\n7\n"

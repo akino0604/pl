@@ -1,0 +1,83 @@
+[Header]
+
+(* Redefine module type with separate name *)
+module type TAQueue =
+sig
+  type element
+  type queue
+  exception EMPTY_Q
+  val emptyQ: queue
+  val enQ: queue * element -> queue
+  val deQ: queue -> element * queue
+end
+
+(* Check if student's IntListQ module satisfies the signature *)
+module ValidIntListQ = (IntListQ : TAQueue)
+
+let (|>) g f = f g
+
+let l1 = [1]
+let l2 = [2]
+let l3 = [3]
+let l4 = [4]
+
+let empty = IntListQ.emptyQ
+let ta_enq v q = IntListQ.enQ (q, v)
+let ta_deq q = snd (IntListQ.deQ q)
+let ta_deqv q = fst (IntListQ.deQ q)
+
+[Test]
+(* 1 *)
+IntListQ.deQ IntListQ.emptyQ
+
+[Exception]
+IntListQ.EMPTY_Q
+
+[Test]
+(* 2 *)
+empty
+|> ta_enq l1
+|> ta_deqv
+
+[Value]
+l1
+
+[Test]
+(* 3 *)
+empty 
+|> ta_enq l1
+|> ta_enq l2
+|> ta_deq
+|> ta_deqv
+
+[Value]
+l2
+
+[Test]
+(* 4 *)
+empty
+|> ta_enq l1
+|> ta_enq l2
+|> ta_deq
+|> ta_enq l3
+|> ta_enq l4
+|> ta_deq
+|> ta_deqv
+
+[Value]
+l3
+
+[Test]
+(* 5 *)
+empty
+|> ta_enq l1
+|> ta_deq
+|> ta_enq l2
+|> ta_enq l3
+|> ta_deq
+|> ta_enq l4
+|> ta_deq
+|> ta_deqv
+
+[Value]
+l4
