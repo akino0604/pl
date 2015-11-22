@@ -38,10 +38,10 @@ let rec cps' exp =
   let k = new_name () in
   match exp with
   (* Constant expressions *)
-  | Num n -> Fn (k, Num n)
-  | Var x -> Fn (k, Var x)
-  | Fn (x, e) -> Fn (k, App (Var k, Fn (x, cps' e)))
-  | Rec (f, x, e) -> Fn (k, App (Var k, Rec (f, x, cps' e)))
+  | Num n -> Fn (k, App (Var k, Num n))
+  | Var x -> Fn (k, App (Var k, Var x))
+  | Fn (x, e) -> Fn (k, App (Var k, Fn (x, e)))
+  | Rec (f, x, e) -> Fn (k, App (Var k, Rec (f, x, e)))
   (* Non constant expressions *)
   | App (e1, e2) ->
     let f = new_name () in
