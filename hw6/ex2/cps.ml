@@ -40,14 +40,18 @@ let rec cps' exp =
   (* Constant expressions *)
   | Num n -> Fn (k, Num n)
   | Var x -> Fn (k, Var x)
-  | Fn (x, e) -> Fn (k, APP(Var k, Fn(x, cps' e)))
-  | Rec (f, x, e) -> Fn (k, APP(Var k, Rec(f, x, cps' e)))
+  | Fn (x, e) -> Fn (k, App (Var k, Fn (x, cps' e)))
+  | Rec (f, x, e) -> Fn (k, App (Var k, Rec (f, x, cps' e)))
   (* Non constant expressions *)
   | App (e1, e2) ->
     let f = new_name () in
     let v = new_name () in
-    Fn (k, APP (cps' e1, Fn (f, APP (cps' e2, Fn (v, APP (Var k, APP (Var f, Var v)))))))
-  | Ifz (e1, e2, e3) -> Fn (k, )
+    Fn (k, App (cps' e1, Fn (f, App (cps' e2, Fn (v, App (Var k, App (Var f, Var v)))))))
+  | Ifz (e1, e2, e3) ->
+    let b = new_name () in
+    let v1 = new_name () in
+    let v2 = new_name () in
+    Fn (k, App (cps' e1, Fn (b, Ifz (Var b, Fn (v1, App (Var v1, cps' e2)), Fn (v2, App (Var v2, cps' e3))))))
   | Add (e1, e2) ->
     let v1 = new_name () in
     let v2 = new_name () in
@@ -55,13 +59,13 @@ let rec cps' exp =
   | Pair (e1, e2) ->
     let v = new_name () in
     let w = new_name () in
-    Fn (k, APP (cps' e1, Fn (v, APP (cps' e2, Fn (w, APP (Var k, Pair (Var v, Var w)))))))
+    Fn (k, App (cps' e1, Fn (v, App (cps' e2, Fn (w, App (Var k, Pair (Var v, Var w)))))))
   | Fst e ->
     let v = new_name () in
-    Fn (k, APP (cps' e, APP (Fn v, APP (Var k, Fst v))))
+    Fn (k, App (cps' e, Fn (v, App (Var k, Fst (Var v)))))
   | Snd e ->
     let v = new_name () in
-    Fn (k, APP (cps' e, APP (Fn v, APP (Var k, Snd v))))
+    Fn (k, App (cps' e, Fn (v, App (Var k, Snd (Var v)))))
 
 let cps exp = cps' (alpha_conv exp [])
 
