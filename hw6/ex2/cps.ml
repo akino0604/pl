@@ -51,7 +51,7 @@ let rec cps' exp =
     let b = new_name () in
     let v1 = new_name () in
     let v2 = new_name () in
-    Fn (k, App (cps' e1, Fn (b, App (Var k, Ifz (Var b, Fn (v1, App (Var v1, cps' e2)), Fn (v2, App (Var v2, cps' e3)))))))
+    Fn (k, App (cps' e1, Fn (b, Ifz (Var b, App (cps' e2, Fn (v1, App (Var k, Var v1))), App (cps' e3, Fn (v2, App (Var k, Var v2)))))))
   | Add (e1, e2) ->
     let v1 = new_name () in
     let v2 = new_name () in
