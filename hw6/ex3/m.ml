@@ -21,8 +21,8 @@ module M : sig
            | BANG of exp            (*   !e       *)
            | SEQ of exp * exp       (*   e ; e    *)
            | PAIR of exp * exp      (*   (e, e)   *)
-           | FST of exp            (*   e.1      *)
-           | SND of exp            (*   e.2      *)
+           | FST of exp             (*   e.1      *)
+           | SND of exp             (*   e.2      *)
   and const = S of string | N of int | B of bool
   and id = string
   and decl = 
@@ -59,8 +59,8 @@ struct
            | BANG of exp            (*   !e       *)
            | SEQ of exp * exp       (*   e ; e    *)
            | PAIR of exp * exp      (*   (e, e)   *)
-           | FST of exp            (*   e.1      *)
-           | SND of exp            (*   e.2      *)
+           | FST of exp             (*   e.1      *)
+           | SND of exp             (*   e.2      *)
   and const = S of string | N of int | B of bool
   and id = string
   and decl = 
@@ -130,12 +130,18 @@ struct
     | _ -> raise (TypeError "not a function")
 
   let op2fn =
-    function ADD -> (fun (v1,v2) -> Int (getInt v1 + getInt v2))
+    function
+    | ADD -> (fun (v1,v2) -> Int (getInt v1 + getInt v2))
     | SUB -> (fun (v1,v2) -> Int (getInt v1 - getInt v2))
     | AND -> (fun (v1,v2) -> Bool (getBool v1 && getBool v2))
     | OR ->  (fun (v1,v2) -> Bool (getBool v1 || getBool v2))
-    | EQ -> (* TODO : implement this *)
-      failwith "Unimplemented"
+    | EQ ->  (fun (v1,v2) ->
+     (match (v1, v2) with
+      | (Int v1', Int v2') -> Bool (v1' = v2')
+      | (String v1', String v2') -> Bool (v1' = v2')
+      | (Bool v1', Bool v2') -> Bool (v1' = v2')
+      | (Loc v1', Loc v2') -> Bool (v1' = v2')
+      | _ -> raise (TypeError "typeerror in eq")))
 
   let rec printValue =
     function 
@@ -157,8 +163,15 @@ struct
       let (c, env') = getClosure v1 in
       (match c with 
       | Fun (x, e) -> eval (env' @+ (x, v2)) m'' e
-      | RecFun (f, x, e) ->  (* TODO : implement this *)
-        failwith "Unimplemented")
+      | RecFun (f, x, e) ->
+        let env'' = env' @+ (x, v2) in
+        eval (env'' @+ (f, v1)) m'' e)
+    | LET (REC (f, x, e1), e2) ->
+      let (v1, m') = eval env mem (FN (x, e1)) in
+      eval (env @+ (f, (Closure (RecFun (f, x, e1), env)))) m' e2
+    | LET (VAL (x, e1), e2) ->
+      let (v1, m') = eval env mem e1 in
+      eval (env @+ (x, v1)) m' e2
     | IF (e1, e2, e3) ->
       let (v1, m') = eval env mem e1 in
       eval env m' (if getBool v1 then e2 else e3)
@@ -173,6 +186,24 @@ struct
       let (v, m') = eval env mem e in
       let _ = printValue v in
       (v, m')
+    | MALLOC e ->
+      let (v, m') = eval env mem e in
+      let (l, m'') = malloc m' in
+      (Loc l, store m'' (l, v))
+    | ASSIGN (e1, e2) ->
+      let (l, m') = eval env mem e1 in
+      let (v, m'') = eval env m' e2 in
+     (match l with
+      | Loc l' -> (v, store m'' (l', v))
+      | _ -> raise (TypeError "typeerror in assign"))
+    | BANG e ->
+      let (l, m') = eval env mem e in
+     (match l with
+      | Loc l' -> (load m' l', m')
+      | _ -> raise (TypeError "typeerror in bang"))
+    | SEQ (e1, e2) ->
+      let (v1, m') = eval env mem e1 in
+      eval env m' e2
     | PAIR (e1, e2) -> 
       let (v1, m') = eval env mem e1 in
       let (v2, m'') = eval env m' e2 in
@@ -183,8 +214,6 @@ struct
     | SND e -> 
       let (v, m') = eval env mem e in
       (snd (getPair v), m')
-    (* TODO : complete the rest of interpreter *)
-    | _ -> failwith "Unimplemented"
 
   let emptyEnv = (fun x -> raise (RunError ("unbound id: " ^ x)))
 
@@ -192,7 +221,6 @@ struct
     (0, fun l -> raise (RunError ("uninitialized loc: " ^ string_of_int l)))
 
   let run exp = ignore (eval emptyEnv emptyMem exp)
-
 end
 
 module type M_TypeChecker = sig
