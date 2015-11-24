@@ -35,7 +35,7 @@ and trans' : Sm5.command -> Sonata.command = function
   | Sm5.UNBIND :: cmds -> Sonata.UNBIND :: (trans' cmds)
   | Sm5.GET ::cmds -> Sonata.GET :: (trans' cmds)
   | Sm5.PUT ::cmds -> Sonata.PUT :: (trans' cmds)
-  | Sm5.CALL :: cmds -> Sonata.MALLOC :: Sonata.BIND "temploc!" :: Sonata.PUSH (Sonata.Id "temploc!") :: Sonata.STORE :: Sonata.MALLOC :: Sonata.BIND "tempval!" :: Sonata.PUSH (Sonata.Id "tempval!") :: Sonata.STORE :: Sonata.MALLOC :: Sonata.BIND "tempfun!" :: Sonata.PUSH (Sonata.Id "tempfun!") :: Sonata.STORE :: Sonata.PUSH (Sonata.Fn ("last!", trans' (Sm5.POP :: cmds))) :: Sonata.PUSH (Sonata.Id "tempfun!") :: Sonata.LOAD :: Sonata.PUSH (Sonata.Id "tempval!") :: Sonata.LOAD :: Sonata.PUSH (Sonata.Id "temploc!") :: Sonata.LOAD :: Sonata.CALL :: (trans' cmds)
+  | Sm5.CALL :: cmds -> Sonata.MALLOC :: Sonata.BIND "temploc!" :: Sonata.PUSH (Sonata.Id "temploc!") :: Sonata.STORE :: Sonata.MALLOC :: Sonata.BIND "tempval!" :: Sonata.PUSH (Sonata.Id "tempval!") :: Sonata.STORE :: Sonata.MALLOC :: Sonata.BIND "tempfun!" :: Sonata.PUSH (Sonata.Id "tempfun!") :: Sonata.STORE :: Sonata.PUSH (Sonata.Fn ("hoe!", trans' (Sm5.POP :: cmds))) :: Sonata.PUSH (Sonata.Id "tempfun!") :: Sonata.LOAD :: Sonata.PUSH (Sonata.Id "tempval!") :: Sonata.LOAD :: Sonata.PUSH (Sonata.Id "temploc!") :: Sonata.LOAD :: Sonata.CALL :: (trans' cmds)
   | Sm5.ADD :: cmds -> Sonata.ADD :: (trans' cmds)
   | Sm5.SUB :: cmds -> Sonata.SUB :: (trans' cmds)
   | Sm5.MUL :: cmds -> Sonata.MUL :: (trans' cmds)
