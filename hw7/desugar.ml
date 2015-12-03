@@ -23,7 +23,7 @@ let rec cps : xexp -> xexp = fun e ->
   | App (e1, e2) ->
     let f = new_name () in
     let v = new_name () in
-    Fn (k, Fn (h, App (App (cps e1, Fn (f, App (cps e2, Fn (v, App (App (App (Var f, Var v), Var k), Var h))))), Var h)))
+    Fn (k, Fn (h, App (App (cps e1, Fn (f, App (App (cps e2, Fn (v, App (App (App (Var f, Var v), Var k), Var h))), Var h))), Var h)))
   | If (e1, e2, e3) ->
     let b = new_name () in
     let v1 = new_name () in
