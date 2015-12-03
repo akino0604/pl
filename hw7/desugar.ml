@@ -12,6 +12,21 @@ let new_name () =
   let _ = count := !count + 1 in
   "x_" ^ (string_of_int !count)
 
+let rec alpha_conv xexp subs =
+  match xexp with
+  | Num n -> Num n
+  | Var x -> (try Var (List.assoc x subs) with Not_found -> Var x)
+  | Fn (x, e) ->
+    let x' = new_name () in
+    let subs' = (x, x') :: subs in
+    Fn (x', alpha_conv e subs')
+  | App (e1, e2) -> App (alpha_conv e1 subs, alpha_conv e2 subs)
+  | If (e1, e2, e3) ->
+    If (alpha_conv e1 subs, alpha_conv e2 subs, alpha_conv e3 subs)
+  | Equal (e1, e2) -> Equal (alpha_conv e1 subs, alpha_conv e2 subs)
+  | Raise e -> Raise (alpha_conv e subs)
+  | Handle (e1, n, e2) -> Handle (alpha_conv e1 subs, n, alpha_conv e2 subs)
+
 (* TODO : Implement this function *)
 let rec cps : xexp -> xexp = fun e ->
   let k = new_name () in
