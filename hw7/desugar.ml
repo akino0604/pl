@@ -55,4 +55,4 @@ let rec cps : xexp -> xexp = fun e ->
 
 let removeExn : xexp -> xexp = fun e ->
   let x = new_name () in
-  App (App (cps e, Fn (x, Var x)), Fn (x, Num 201511))
+  App (App (cps (alpha_conv e []), Fn (x, Var x)), Fn (x, Num 201511))
