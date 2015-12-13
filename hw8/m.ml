@@ -21,8 +21,8 @@ module M : sig
            | BANG of exp            (*   !e       *)
            | SEQ of exp * exp       (*   e ; e    *)
            | PAIR of exp * exp      (*   (e, e)   *)
-           | FST of exp            (*   e.1      *)
-           | SND of exp            (*   e.2      *)
+           | FST of exp             (*   e.1      *)
+           | SND of exp             (*   e.2      *)
   and const = S of string | N of int | B of bool
   and id = string
   and decl = 
@@ -58,8 +58,8 @@ struct
            | BANG of exp            (*   !e       *)
            | SEQ of exp * exp       (*   e ; e    *)
            | PAIR of exp * exp      (*   (e, e)   *)
-           | FST of exp            (*   e.1      *)
-           | SND of exp            (*   e.2      *)
+           | FST of exp             (*   e.1      *)
+           | SND of exp             (*   e.2      *)
   and const = S of string | N of int | B of bool
   and id = string
   and decl = 
@@ -95,7 +95,7 @@ struct
   (* notations (see 5 page in M.pdf) *)
   (* f @+ (x, v)              f[x |-> v]
    * store M (l, v)           M[l |-> v]
-   * load M l                M(l)
+   * load M l                 M(l)
    *)
   let loc_count = ref 0
   let (@+) f (x, v) = (fun y -> if y = x then v else f y)
