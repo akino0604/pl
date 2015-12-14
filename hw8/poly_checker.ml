@@ -115,15 +115,12 @@ let rec apply: subst -> typ -> typ = fun s t ->
   
 let rec unify: typ -> typ -> subst = fun t t' ->
   match (t, t') with
+  | (TInt, TInt)
+  | (TBool, TBool)
+  | (TString, TString) -> empty_subst
   | (TVal x, TVal y) -> if x = y then empty_subst else make_subst x t'
-  | (TVal x, TPair (t1, t2))
-  | (TVal x, TLoc t'')
-  | (TVal x, TFun (t1, t2)) -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
-  | (TPair (t1, t2), TVal y)
-  | (TLoc t'', TVal y)
-  | (TFun (t1, t2), TVal y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
-  | (TVal x, _) -> make_subst x t
-  | (_, TVal y) -> make_subst y t'
+  | (TVal x, _) -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
+  | (_, TVal y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
   | (TPair (t1, t2), TPair (t1', t2')) ->
     let s = unify t1 t1' in
     let s' = unify t2 t2' in
@@ -133,13 +130,7 @@ let rec unify: typ -> typ -> subst = fun t t' ->
     let s = unify t1 t1' in
     let s' = unify t2 t2' in
     ((@@) s' s)
-  | (TPair (t1, t2), _)
-  | (TLoc t'', _)
-  | (TFun (t1, t2), _)
-  | (_, TPair (t1, t2))
-  | (_, TLoc t'')
-  | (_, TFun (t1, t2)) -> raise (M.TypeError "Impossible")
-  | (_, _) -> empty_subst
+  | (_, _) -> raise (M.TypeError "fail")
 
 let rec expansive: M.exp -> bool = fun exp ->
   match exp with
@@ -205,7 +196,12 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     let (s, t) = sol ((f, SimpleTyp beta)::env, FN (x, e)) in
     let s' = unify (s beta, t) in
     ((@@) s' s, s' t)
-  | IF (e1, e2, e3)
+  | IF (e1, e2, e3) ->
+    let (s, t) = sol (env, e1) in
+    let (s1, t') = sol (subst_env s env, e2) in
+    let (s2, t'') = sol (subst_env s env, e3) in
+    let s' = unify t' t'' in
+
   | BOP (EQ, e1, e2)
   | BOP (ADD, e1, e2)
   | BOP (SUB, e1, e2)
