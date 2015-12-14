@@ -117,12 +117,12 @@ let rec unify: typ -> typ -> subst = fun t t' ->
   | (_, TVar y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
   | (TPair (t1, t2), TPair (t1', t2')) ->
     let s = unify t1 t1' in
-    let s' = unify t2 t2' in
+    let s' = unify (s t2) (s t2') in
     s' @@ s
   | (TLoc t1, TLoc t2) -> unify t1 t2
   | (TFun (t1, t2), TFun (t1', t2')) ->
     let s = unify t1 t1' in
-    let s' = unify t2 t2' in
+    let s' = unify (s t2) (s t2') in
     s' @@ s
   | (_, _) -> raise (M.TypeError "fail")
 
@@ -167,7 +167,7 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     else raise (M.TypeError "Unbound variable")
   | FN (x, e) ->
     let beta = new_var () in
-    let (s, t) = sol ((x, SimpleTyp (TVar beta))::env, exp) in
+    let (s, t) = sol ((x, SimpleTyp (TVar beta))::env, e) in
     (s, TFun (s (TVar beta), t))
   | APP (e1, e2) ->
     let beta = new_var () in
@@ -182,7 +182,7 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
        (let (s', t') = sol ((x, SimpleTyp t)::(subst_env s env), e') in
         (s' @@ s, t'))
       else
-       (let (s', t') = sol ((x, (generalize (subst_env s env) t))::(subst_env s env), e') in
+       (let (s', t') = sol ((x, generalize (subst_env s env) t)::(subst_env s env), e') in
         (s' @@ s, t'))
   | LET (REC (f, x, e), e') ->
     let beta = new_var () in
@@ -235,7 +235,7 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   | PAIR (e1, e2) ->
     let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
-    (s' @@ s, TPair (t, t'))
+    (s' @@ s, TPair (s' t, t'))
   | FST e ->
     let (s, t) = sol (env, e) in
     let v1 = new_var () in
@@ -254,10 +254,10 @@ let rec typtomtyp: typ -> M.typ = fun t ->
   | TInt -> TyInt
   | TBool -> TyBool
   | TString -> TyString
+  | TVar x -> raise (M.TypeError "TVar")
   | TPair (t1, t2) -> TyPair (typtomtyp t1, typtomtyp t2)
   | TLoc t' -> TyLoc (typtomtyp t')
   | TFun (t1, t2) -> raise (M.TypeError "TFun")
-  | TVar x -> raise (M.TypeError "TVar")
 
 (* TODO : Implement this function *)
 let check : M.exp -> M.typ = fun e ->
