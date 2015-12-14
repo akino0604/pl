@@ -192,8 +192,8 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   | M.IF (e1, e2, e3) ->
     let (s, t) = sol (env, e1) in
     let s' = unify t TBool in
-    let (s1, t1) = sol (subst_env s env, e2) in
-    let (s2, t2) = sol (subst_env s env, e3) in
+    let (s1, t1) = sol (subst_env (s' @@ s) env, e2) in
+    let (s2, t2) = sol (subst_env (s' @@ s) env, e3) in
     let s'' = unify t1 t2 in
     (s'' @@ s2 @@ s1 @@ s' @@ s, t2)
   | M.BOP (M.EQ, e1, e2) ->
@@ -204,16 +204,16 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   | M.BOP (M.SUB, e1, e2) ->
     let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
-    let s1 = unify t TInt in
-    let s2 = unify t' TInt in
+    let s1 = unify (s' t) TInt in
+    let s2 = unify (s1 t') TInt in
     (s2 @@ s1 @@ s' @@ s, t')
   | M.BOP (M.AND, e1, e2)
   | M.BOP (M.OR, e1, e2) ->
     let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
-    let s1 = unify t TBool in
+    let s1 = unify (s' t) TBool in
     let s2 = unify t' TBool in
-    (s2 @@ s1 @@ s' @@ s, t')
+    (s2 @@ s1 @@ s' @@ s, s2 t')
   | M.READ -> (empty_subst, TInt)
   | M.WRITE e -> raise TLQKF
   | M.MALLOC e ->
@@ -221,9 +221,9 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     (s, TLoc t)
   | M.ASSIGN (e1, e2) ->
     let (s, t) = sol (env, e1) in
-    let v = new_var () in
-    let s' = unify t (TVar v) in
-    (s' @@ s, s' (TVar v))
+    let (s', t') = sol (subst_env s env, e2) in
+    let s'' = unify (s t) (TLoc t') in
+    (s'' @@ s' @@ s, s'' t')
   | M.BANG e ->
     let (s, t) = sol (env, e) in
     let s' = unify t TBool in
