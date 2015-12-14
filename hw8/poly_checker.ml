@@ -165,9 +165,9 @@ let rec solve: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   match exp with
   | CONST const ->
    (match const with
-    | N n -> (empty_subst, SimpleTyp TInt)
-    | B b -> (empty_subst, SimpleTyp TBool)
-    | S str -> (empty_subst, SimpleTyp TString))
+    | N n -> (empty_subst, TInt)
+    | B b -> (empty_subst, TBool)
+    | S str -> (empty_subst, TString))
   | VAR x ->
     if (List.mem_assoc x typ_env)
       then
@@ -201,6 +201,9 @@ let rec solve: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     let s' = unify (s beta, t) in
     ((@@) s' s, s' t)
   | IF (e1, e2, e3)
+  | BOP (EQ, e1, e2)
+  | BOP (ADD, e1, e2)
+  | BOP (SUB, e1, e2)
   | BOP (_, e1, e2)
   | READ -> (empty_subst, SimpleTyp TInt)
   | WRITE e
@@ -211,6 +214,16 @@ let rec solve: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   | PAIR (e1, e2)
   | FST e
   | SND e
+
+let rec typtomtyp: typ -> M.typ = fun t ->
+  match t with
+  | TInt -> TyInt
+  | TBool -> TyBool
+  | TString -> TyString
+  | TPair (t1, t2) -> TyPair (typtomtyp t1, typtomtyp t2)
+  | TLoc t' -> TyLoc (typtomtyp t')
+  | TFun (t1, t2) -> raise (M.TypeError "TFun")
+  | TVar x -> raise (M.TypeError "TVar")
 
 (* TODO : Implement this function *)
 let check : M.exp -> M.typ =

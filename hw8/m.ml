@@ -69,10 +69,10 @@ struct
 
   (* type in M  *)
   type typ = TyInt                    (* integer type *)
-             | TyBool                 (* boolean type *)
-             | TyString               (* string type *)
-             | TyPair of typ * typ    (* pair type *)
-             | TyLoc of typ           (* location type *)
+           | TyBool                 (* boolean type *)
+           | TyString               (* string type *)
+           | TyPair of typ * typ    (* pair type *)
+           | TyLoc of typ           (* location type *)
 
   (* errors *)
   exception RunError of string
