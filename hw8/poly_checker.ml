@@ -45,7 +45,9 @@ let rec ftv_of_typ : typ -> var list = function
   | TPair (t1, t2) -> union_ftv (ftv_of_typ t1) (ftv_of_typ t2)
   | TLoc t -> ftv_of_typ t
   | TFun (t1, t2) ->  union_ftv (ftv_of_typ t1) (ftv_of_typ t2)
-  | TVar v -> [v]
+  | TVar v
+  | TWrite v
+  | TEq v -> [v]
   | _ -> []
 
 let ftv_of_scheme : typ_scheme -> var list = function
@@ -76,7 +78,9 @@ let empty_subst : subst = fun t -> t
 let make_subst : var -> typ -> subst = fun x t ->
   let rec subs t' = 
     match t' with
-    | TVar x' -> if (x = x') then t else t'
+    | TVar x'
+    | TWrite x'
+    | TEq x' -> if (x = x') then t else t'
     | TPair (t1, t2) -> TPair (subs t1, subs t2)
     | TLoc t'' -> TLoc (subs t'')
     | TFun (t1, t2) -> TFun (subs t1, subs t2)
@@ -118,7 +122,13 @@ let rec unify: typ -> typ -> subst = fun t t' ->
   | (TString, TString) -> empty_subst
   | (TVar x, TVar y)
   | (TWrite x, TWrite y)
-  | (TEq x, TEq y) -> if x = y then empty_subst else make_subst x t'
+  | (TEq x, TEq y)
+  | (TVar x, TWrite y)
+  | (TWrite x, TVar y)
+  | (TWrite x, TEq y)
+  | (TEq x, TWrite y)
+  | (TEq x, TVar y)
+  | (TVar x, TEq y) -> if x = y then empty_subst else make_subst x t'
   | (TVar x, _) -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
   | (_, TVar y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
   | (TPair (t1, t2), TPair (t1', t2')) ->
@@ -142,8 +152,8 @@ let rec unify: typ -> typ -> subst = fun t t' ->
   | (TInt, TEq y)
   | (TBool, TEq y)
   | (TString, TEq y) -> make_subst y t
-  | (TEq x, TLoc t') -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
-  | (TLoc t, TEq y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
+  | (TEq x, TLoc t2) -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
+  | (TLoc t1, TEq y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
   | (_, _) -> raise (M.TypeError "fail")
 
 let rec expansive: M.exp -> bool = fun exp ->
@@ -255,7 +265,7 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   | M.ASSIGN (e1, e2) ->
     let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
-    let s'' = unify (s t) (TLoc t') in
+    let s'' = unify (s' t) (TLoc t') in
     (s'' @@ s' @@ s, s'' t')
   | M.BANG e ->
     let (s, t) = sol (env, e) in
@@ -288,10 +298,9 @@ let rec typtomtyp: typ -> M.typ = fun t ->
   | TInt -> M.TyInt
   | TBool -> M.TyBool
   | TString -> M.TyString
-  | TVar x -> raise (M.TypeError "TVar")
   | TPair (t1, t2) -> M.TyPair (typtomtyp t1, typtomtyp t2)
   | TLoc t' -> M.TyLoc (typtomtyp t')
-  | TFun (t1, t2) -> raise (M.TypeError "TFun")
+  | _ -> raise (M.TypeError "Impossible")
 
 (* TODO : Implement this function *)
 let check : M.exp -> M.typ = fun e ->
