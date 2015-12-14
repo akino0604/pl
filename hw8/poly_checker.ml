@@ -57,7 +57,7 @@ let rec find_write: typ -> var list = function
 
 let rec find_eq: typ -> var list = function
   | TPair (t1, t2) -> union_ftv (find_eq t1) (find_eq t2)
-  | TLoc t -> find_write t
+  | TLoc t -> find_eq t
   | TFun (t1, t2) -> union_ftv (find_eq t1) (find_eq t2)
   | TEq v -> [v]
   | _ -> []
@@ -230,9 +230,9 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     then
      (let (s', t') = sol ((x, SimpleTyp t)::(subst_env s env), e') in
       (s' @@ s, t'))
-      else
-       (let (s', t') = sol ((x, generalize (subst_env s env) t)::(subst_env s env), e') in
-        (s' @@ s, t'))
+    else
+     (let (s', t') = sol ((x, generalize (subst_env s env) t)::(subst_env s env), e') in
+      (s' @@ s, t'))
   | M.LET (M.REC (f, x, e), e') ->
     let beta = new_var () in
     let (s, t) = sol ((f, SimpleTyp (TVar beta))::env, M.FN (x, e)) in
