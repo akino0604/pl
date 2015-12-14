@@ -226,8 +226,9 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     (s'' @@ s' @@ s, s'' t')
   | M.BANG e ->
     let (s, t) = sol (env, e) in
-    let s' = unify t TBool in
-    (s' @@ s, s' t)
+    let v = new_var () in
+    let s' = unify t (TLoc (TVar v)) in
+    (s' @@ s, s' (TVar v))
   | M.SEQ (e1, e2) ->
     let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
