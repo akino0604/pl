@@ -48,6 +48,20 @@ let rec ftv_of_typ : typ -> var list = function
   | TEq v -> [v]
   | _ -> []
 
+let rec find_write: typ -> var list = function
+  | TPair (t1, t2) -> union_ftv (find_write t1) (find_write t2)
+  | TLoc t -> find_write t
+  | TFun (t1, t2) -> union_ftv (find_write t1) (find_write t2)
+  | TWrite v -> [v]
+  | _ -> []
+
+let rec find_eq: typ -> var list = function
+  | TPair (t1, t2) -> union_ftv (find_eq t1) (find_eq t2)
+  | TLoc t -> find_write t
+  | TFun (t1, t2) -> union_ftv (find_eq t1) (find_eq t2)
+  | TEq v -> [v]
+  | _ -> []
+
 let ftv_of_scheme : typ_scheme -> var list = function
   | SimpleTyp t -> ftv_of_typ t
   | GenTyp (alphas, t) -> sub_ftv (ftv_of_typ t) alphas 
@@ -93,9 +107,16 @@ let subst_scheme : subst -> typ_scheme -> typ_scheme = fun subs tyscm ->
   | GenTyp (alphas, t) ->
     (* S (\all a.t) = \all b.S{a->b}t  (where b is new variable) *)
     let betas = List.map (fun _ -> new_var()) alphas in
+    let write = find_write t in
+    let eq = find_eq t in
     let s' =
       List.fold_left2
-        (fun acc_subst alpha beta -> make_subst alpha (TVar beta) @@ acc_subst)
+        (fun acc_subst alpha beta ->
+          if (List.mem alpha write)
+          then (make_subst alpha (TWrite beta) @@ acc_subst)
+          else if (List.mem alpha eq)
+          then (make_subst alpha (TEq beta) @@ acc_subst)
+          else (make_subst alpha (TVar beta) @@ acc_subst))
         empty_subst alphas betas
     in
     GenTyp (betas, subs (s' t))
@@ -152,7 +173,7 @@ let rec unify: typ -> typ -> subst = fun t t' ->
   | (TString, TEq y) -> make_subst y t
   | (TEq x, TLoc t2) -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
   | (TLoc t1, TEq y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
-  | (_, _) -> raise (M.TypeError "fail")
+  | (_, _) -> raise (M.TypeError "else")
 
 let rec expansive: M.exp -> bool = fun exp ->
   match exp with
