@@ -101,28 +101,20 @@ let subst_env : subst -> typ_env -> typ_env = fun subs tyenv ->
 
 let rec occurs: string -> typ -> bool = fun str t ->
   match t with
-  | TVal x -> str = x
+  | TVar x -> str = x
   | TPair (t1, t2) -> occurs str t1 || occurs str t2
   | TLoc t' -> occurs str t'
   | TFun (t1, t2) -> occurs str t1 || occurs str t2
   | _ -> false
-
-let rec apply: subst -> typ -> typ = fun s t ->
-  match t with
-  | TVal x -> if List.mem_assoc x s then List.assoc x s else t
-  | TPair (t1, t2) -> TPair (apply s t1, apply s t2)
-  | TLoc t' -> TLoc (apply s t')
-  | TFun (t1, t2) -> TFun (apply s t1, apply s t2)
-  | _ -> t
   
 let rec unify: typ -> typ -> subst = fun t t' ->
   match (t, t') with
   | (TInt, TInt)
   | (TBool, TBool)
   | (TString, TString) -> empty_subst
-  | (TVal x, TVal y) -> if x = y then empty_subst else make_subst x t'
-  | (TVal x, _) -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
-  | (_, TVal y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
+  | (TVar x, TVar y) -> if x = y then empty_subst else make_subst x t'
+  | (TVar x, _) -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
+  | (_, TVar y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
   | (TPair (t1, t2), TPair (t1', t2')) ->
     let s = unify t1 t1' in
     let s' = unify t2 t2' in
@@ -141,7 +133,7 @@ let rec expansive: M.exp -> bool = fun exp ->
   | FN (x, e) -> false
   | APP (e1, e2) -> true
   | LET (VAL (x, e), e') -> expansive e || expansive e'
-  | LET (REC (f, x, e)) -> false
+  | LET (REC (f, x, e), e') -> false
   | IF (e1, e2, e3) -> expansive e1 || expansive e2 || expansive e3
   | BOP (_, e1, e2) -> expansive e1 || expansive e2
   | READ -> false
@@ -162,40 +154,40 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     | B b -> (empty_subst, TBool)
     | S str -> (empty_subst, TString))
   | VAR x ->
-    if (List.mem_assoc x typ_env)
+    if (List.mem_assoc x env)
       then
-       (let tysch = List.assoc x typ_env in
+       (let tysch = List.assoc x env in
          (match tysch with
           | SimpleTyp t -> (empty_subst, t)
-          | Gentyp (alphas * t) ->
-            let newgen = subst_scheme empty_subs (Gentyp (alphas * t)) in
+          | GenTyp (alphas, t) ->
+            let newgen = subst_scheme empty_subst (GenTyp (alphas, t)) in
            (match newgen with
             | SimpleTyp t -> raise (M.TypeError "No SimpleTyp")
-            | Gentyp (betas * t') -> (empty_subst, t'))))
+            | GenTyp (betas, t') -> (empty_subst, t'))))
     else raise (M.TypeError "Unbound variable")
   | FN (x, e) ->
-    let beta = TVar new_var () in
-    let (s, t) = sol ((x, beta)::env, exp) in
-    (s, TFun (s beta, t))
+    let beta = new_var () in
+    let (s, t) = sol ((x, SimpleTyp (TVar beta))::env, exp) in
+    (s, TFun (s (TVar beta), t))
   | APP (e1, e2) ->
-    let beta = TVar new_var () in
+    let beta = new_var () in
     let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
-    let s'' = unify (s' t, TFun (t', beta)) in
-    (s'' @@ s' @@ s, s'' beta)
+    let s'' = unify (s' t) (TFun (t', TVar beta)) in
+    (s'' @@ s' @@ s, s'' (TVar beta))
   | LET (VAL (x, e), e') ->
     let (s, t) = sol (env, e) in
     if expansive(e)
       then
-       (let (s', t') = sol ((x, s t), e') in
+       (let (s', t') = sol ((x, SimpleTyp t)::(subst_env s env), e') in
         (s' @@ s, t'))
       else
        (let (s', t') = sol ((x, (generalize (subst_env s env) t))::(subst_env s env), e') in
         (s' @@ s, t'))
   | LET (REC (f, x, e), e') ->
-    let beta = TVar new_var () in
-    let (s, t) = sol ((f, SimpleTyp beta)::env, FN (x, e)) in
-    let s' = unify (s beta, t) in
+    let beta = new_var () in
+    let (s, t) = sol ((f, SimpleTyp (TVar beta))::env, FN (x, e)) in
+    let s' = unify (s (TVar beta)) t in
     (s' @@ s, s' t)
   | IF (e1, e2, e3) ->
     let (s, t) = sol (env, e1) in
@@ -218,7 +210,7 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   | BOP (AND, e1, e2)
   | BOP (OR, e1, e2) ->
     let (s, t) = sol (env, e1) in
-    let (s', t') = sol (subst_env s env, e3) in
+    let (s', t') = sol (subst_env s env, e2) in
     let s1 = unify t TBool in
     let s2 = unify t' TBool in
     (s2 @@ s1 @@ s' @@ s, t')
@@ -229,15 +221,15 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     (s, TLoc t)
   | ASSIGN (e1, e2) ->
     let (s, t) = sol (env, e1) in
-    let v = new_val () in
+    let v = new_var () in
     let s' = unify t (TVar v) in
     (s' @@ s, TVar v)
   | BANG e ->
     let (s, t) = sol (env, e) in
-    let s' = unify s TBool in
+    let s' = unify t TBool in
     (s' @@ s, t)
   | SEQ (e1, e2) ->
-    let (s, t) = sol (env, e) in
+    let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
     (s' @@ s, t')
   | PAIR (e1, e2) ->
@@ -246,15 +238,15 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     (s' @@ s, TPair (t, t'))
   | FST e ->
     let (s, t) = sol (env, e) in
-    let v1 = new_val () in
-    let v2 = new_val () in
-    let s' = unify (t, TPair (TVar v1, TVar v2)) in
+    let v1 = new_var () in
+    let v2 = new_var () in
+    let s' = unify t (TPair (TVar v1, TVar v2)) in
     (s' @@ s, TVar v1)
   | SND e ->
     let (s, t) = sol (env, e) in
-    let v1 = new_val () in
-    let v2 = new_val () in
-    let s' = unify (t, TPair (TVar v1, TVar v2)) in
+    let v1 = new_var () in
+    let v2 = new_var () in
+    let s' = unify t (TPair (TVar v1, TVar v2)) in
     (s' @@ s, TVar v2)
 
 let rec typtomtyp: typ -> M.typ = fun t ->
@@ -268,5 +260,6 @@ let rec typtomtyp: typ -> M.typ = fun t ->
   | TVar x -> raise (M.TypeError "TVar")
 
 (* TODO : Implement this function *)
-let check : M.exp -> M.typ =
-  raise (M.TypeError "Type Checker Unimplemented")
+let check : M.exp -> M.typ = fun e ->
+  let (s, t) = sol ([], e) in
+  typtomtyp t
