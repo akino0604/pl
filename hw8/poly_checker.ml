@@ -1,3 +1,5 @@
+exception TLQKF
+
 (*
  * SNU 4190.310 Programming Languages 2015 Fall
  * Type Checker Skeleton
@@ -124,12 +126,12 @@ let rec unify: typ -> typ -> subst = fun t t' ->
   | (TPair (t1, t2), TPair (t1', t2')) ->
     let s = unify t1 t1' in
     let s' = unify t2 t2' in
-    ((@@) s' s)
+    s' @@ s
   | (TLoc t1, TLoc t2) -> unify t1 t2
   | (TFun (t1, t2), TFun (t1', t2')) ->
     let s = unify t1 t1' in
     let s' = unify t2 t2' in
-    ((@@) s' s)
+    s' @@ s
   | (_, _) -> raise (M.TypeError "fail")
 
 let rec expansive: M.exp -> bool = fun exp ->
@@ -170,8 +172,7 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
            (match newgen with
             | SimpleTyp t -> raise (M.TypeError "No SimpleTyp")
             | Gentyp (betas * t') -> (empty_subst, t'))))
-    else
-      (empty_subst, (x, (* ahffk tlqkf *) ))
+    else raise (M.TypeError "Unbound variable")
   | FN (x, e) ->
     let beta = TVar new_var () in
     let (s, t) = sol ((x, beta)::env, exp) in
@@ -181,40 +182,80 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
     let s'' = unify (s' t, TFun (t', beta)) in
-    (((@@) ((@@) s'' s') s), s'' beta)
+    (s'' @@ s' @@ s, s'' beta)
   | LET (VAL (x, e), e') ->
     let (s, t) = sol (env, e) in
     if expansive(e)
       then
        (let (s', t') = sol ((x, s t), e') in
-        ((@@) s' s, t'))
+        (s' @@ s, t'))
       else
        (let (s', t') = sol ((x, (generalize (subst_env s env) t))::(subst_env s env), e') in
-        ((@@) s' s, t'))
+        (s' @@ s, t'))
   | LET (REC (f, x, e), e') ->
     let beta = TVar new_var () in
     let (s, t) = sol ((f, SimpleTyp beta)::env, FN (x, e)) in
     let s' = unify (s beta, t) in
-    ((@@) s' s, s' t)
+    (s' @@ s, s' t)
   | IF (e1, e2, e3) ->
     let (s, t) = sol (env, e1) in
-    let (s1, t') = sol (subst_env s env, e2) in
-    let (s2, t'') = sol (subst_env s env, e3) in
-    let s' = unify t' t'' in
-
-  | BOP (EQ, e1, e2)
+    let s' = unify t TBool in
+    let (s1, t1) = sol (subst_env s env, e2) in
+    let (s2, t2) = sol (subst_env s env, e3) in
+    let s'' = unify t1 t2 in
+    (s'' @@ s2 @@ s1 @@ s' @@ s, t2)
+  | BOP (EQ, e1, e2) ->
+    let (s, t) = sol (env, e1) in
+    let (s', t') = sol (subst_env s env, e2) in
+    raise TLQKF
   | BOP (ADD, e1, e2)
-  | BOP (SUB, e1, e2)
-  | BOP (_, e1, e2)
-  | READ -> (empty_subst, SimpleTyp TInt)
-  | WRITE e
-  | MALLOC e
-  | ASSIGN (e1, e2)
-  | BANG e
-  | SEQ (e1, e2)
-  | PAIR (e1, e2)
-  | FST e
-  | SND e
+  | BOP (SUB, e1, e2) ->
+    let (s, t) = sol (env, e1) in
+    let (s', t') = sol (subst_env s env, e2) in
+    let s1 = unify t TInt in
+    let s2 = unify t' TInt in
+    (s2 @@ s1 @@ s' @@ s, t')
+  | BOP (AND, e1, e2)
+  | BOP (OR, e1, e2) ->
+    let (s, t) = sol (env, e1) in
+    let (s', t') = sol (subst_env s env, e3) in
+    let s1 = unify t TBool in
+    let s2 = unify t' TBool in
+    (s2 @@ s1 @@ s' @@ s, t')
+  | READ -> (empty_subst, TInt)
+  | WRITE e -> raise TLQKF
+  | MALLOC e ->
+    let (s, t) = sol (env, e) in
+    (s, TLoc t)
+  | ASSIGN (e1, e2) ->
+    let (s, t) = sol (env, e1) in
+    let v = new_val () in
+    let s' = unify t (TVar v) in
+    (s' @@ s, TVar v)
+  | BANG e ->
+    let (s, t) = sol (env, e) in
+    let s' = unify s TBool in
+    (s' @@ s, t)
+  | SEQ (e1, e2) ->
+    let (s, t) = sol (env, e) in
+    let (s', t') = sol (subst_env s env, e2) in
+    (s' @@ s, t')
+  | PAIR (e1, e2) ->
+    let (s, t) = sol (env, e1) in
+    let (s', t') = sol (subst_env s env, e2) in
+    (s' @@ s, TPair (t, t'))
+  | FST e ->
+    let (s, t) = sol (env, e) in
+    let v1 = new_val () in
+    let v2 = new_val () in
+    let s' = unify (t, TPair (TVar v1, TVar v2)) in
+    (s' @@ s, TVar v1)
+  | SND e ->
+    let (s, t) = sol (env, e) in
+    let v1 = new_val () in
+    let v2 = new_val () in
+    let s' = unify (t, TPair (TVar v1, TVar v2)) in
+    (s' @@ s, TVar v2)
 
 let rec typtomtyp: typ -> M.typ = fun t ->
   match t with
