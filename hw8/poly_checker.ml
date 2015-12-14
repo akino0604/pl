@@ -161,7 +161,7 @@ let rec expansive: M.exp -> bool = fun exp ->
   | FST e -> expansive e
   | SND e -> expansive e
 
-let rec solve: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
+let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   match exp with
   | CONST const ->
    (match const with
@@ -183,21 +183,26 @@ let rec solve: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
       (empty_subst, (x, (* ahffk tlqkf *) ))
   | FN (x, e) ->
     let beta = TVar new_var () in
-    let (s, t) = solve ((x, beta)::env, exp) in
+    let (s, t) = sol ((x, beta)::env, exp) in
     (s, TFun (s beta, t))
   | APP (e1, e2) ->
     let beta = TVar new_var () in
-    let (s, t) = solve (env, e1) in
-    let (s', t') = solve (subst_env s env, e2) in
+    let (s, t) = sol (env, e1) in
+    let (s', t') = sol (subst_env s env, e2) in
     let s'' = unify (s' t, TFun (t', beta)) in
     (((@@) ((@@) s'' s') s), s'' beta)
   | LET (VAL (x, e), e') ->
-    let (s, t) = solve (env, e) in
-    let (s', t') = solve ((x, (generalize (subst_env s env) t))::(subst_env s env), e') in
-    ((@@) s' s, t')
+    let (s, t) = sol (env, e) in
+    if expansive(e)
+      then
+       (let (s', t') = sol ((x, s t), e') in
+        ((@@) s' s, t'))
+      else
+       (let (s', t') = sol ((x, (generalize (subst_env s env) t))::(subst_env s env), e') in
+        ((@@) s' s, t'))
   | LET (REC (f, x, e), e') ->
     let beta = TVar new_var () in
-    let (s, t) = solve ((f, SimpleTyp beta)::env, FN (x, e)) in
+    let (s, t) = sol ((f, SimpleTyp beta)::env, FN (x, e)) in
     let s' = unify (s beta, t) in
     ((@@) s' s, s' t)
   | IF (e1, e2, e3)
