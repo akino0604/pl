@@ -17,6 +17,8 @@ type typ = TInt
          | TLoc of typ
          | TFun of typ * typ
          | TVar of var
+         | TWrite of var
+         | TEq of var
 (* Modify, or add more if needed *)
 
 type typ_scheme = SimpleTyp of typ 
@@ -101,7 +103,9 @@ let subst_env : subst -> typ_env -> typ_env = fun subs tyenv ->
 
 let rec occurs: string -> typ -> bool = fun str t ->
   match t with
-  | TVar x -> str = x
+  | TVar x
+  | TWrite x
+  | TEq x -> str = x
   | TPair (t1, t2) -> occurs str t1 || occurs str t2
   | TLoc t' -> occurs str t'
   | TFun (t1, t2) -> occurs str t1 || occurs str t2
@@ -112,7 +116,9 @@ let rec unify: typ -> typ -> subst = fun t t' ->
   | (TInt, TInt)
   | (TBool, TBool)
   | (TString, TString) -> empty_subst
-  | (TVar x, TVar y) -> if x = y then empty_subst else make_subst x t'
+  | (TVar x, TVar y)
+  | (TWrite x, TWrite y)
+  | (TEq x, TEq y) -> if x = y then empty_subst else make_subst x t'
   | (TVar x, _) -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
   | (_, TVar y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
   | (TPair (t1, t2), TPair (t1', t2')) ->
@@ -124,6 +130,20 @@ let rec unify: typ -> typ -> subst = fun t t' ->
     let s = unify t1 t1' in
     let s' = unify (s t2) (s t2') in
     s' @@ s
+  | (TWrite x, TInt)
+  | (TWrite x, TBool)
+  | (TWrite x, TString)
+  | (TEq x, TInt)
+  | (TEq x, TBool)
+  | (TEq x, TString) -> make_subst x t'
+  | (TInt, TWrite y)
+  | (TBool, TWrite y)
+  | (TString, TWrite y)
+  | (TInt, TEq y)
+  | (TBool, TEq y)
+  | (TString, TEq y) -> make_subst y t
+  | (TEq x, TLoc t') -> if occurs x t' then raise (M.TypeError "Impossible") else make_subst x t'
+  | (TLoc t, TEq y) -> if occurs y t then raise (M.TypeError "Impossible") else make_subst y t
   | (_, _) -> raise (M.TypeError "fail")
 
 let rec expansive: M.exp -> bool = fun exp ->
@@ -188,7 +208,13 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     let beta = new_var () in
     let (s, t) = sol ((f, SimpleTyp (TVar beta))::env, M.FN (x, e)) in
     let s' = unify (s (TVar beta)) t in
-    (s' @@ s, s' t)
+    if expansive(e)
+      then
+       (let (s'', t') = sol ((x, SimpleTyp (s' t))::(subst_env s env), e') in
+        (s'' @@ s' @@ s, t'))
+    else
+     (let (s'', t') = sol ((x, generalize (subst_env s env) (s' t))::(subst_env s env), e') in
+      (s'' @@ s' @@ s, t'))
   | M.IF (e1, e2, e3) ->
     let (s, t) = sol (env, e1) in
     let s' = unify t TBool in
@@ -199,7 +225,10 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
   | M.BOP (M.EQ, e1, e2) ->
     let (s, t) = sol (env, e1) in
     let (s', t') = sol (subst_env s env, e2) in
-    raise TLQKF
+    let v = new_var () in
+    let s1 = unify (s' t) t' in
+    let s2 = unify (s1 t') (TEq v) in
+    (s2 @@ s1 @@ s' @@ s, TBool)
   | M.BOP (M.ADD, e1, e2)
   | M.BOP (M.SUB, e1, e2) ->
     let (s, t) = sol (env, e1) in
@@ -215,7 +244,11 @@ let rec sol: typ_env * M.exp -> (subst * typ) = fun (env, exp) ->
     let s2 = unify t' TBool in
     (s2 @@ s1 @@ s' @@ s, s2 t')
   | M.READ -> (empty_subst, TInt)
-  | M.WRITE e -> raise TLQKF
+  | M.WRITE e ->
+    let (s, t) = sol (env, e) in
+    let v = new_var () in
+    let s' = unify t (TWrite v) in
+    (s' @@ s, s' (TWrite v))
   | M.MALLOC e ->
     let (s, t) = sol (env, e) in
     (s, TLoc t)
